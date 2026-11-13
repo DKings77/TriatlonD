@@ -26,6 +26,9 @@ struct FichaView: View {
                     Text(Juego.lecturaCarga(estado.carga))
                         .font(.footnote)
                         .foregroundStyle(Tema.textoSecundario)
+                    Text("Carga calculada por la app con tus sesiones de 28 días. Puede no coincidir con la de Garmin.")
+                        .font(.caption)
+                        .foregroundStyle(Tema.textoSecundario)
                 }
 
                 HStack(spacing: 10) {
