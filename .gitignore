@@ -1,0 +1,6 @@
+# Generado por XcodeGen en GitHub Actions: no se sube
+*.xcodeproj
+build/
+Payload/
+*.ipa
+.DS_Store
