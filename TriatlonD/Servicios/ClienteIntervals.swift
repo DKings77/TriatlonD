@@ -2,7 +2,7 @@
 // ------------------------------------------------------------------
 // Envía entrenos al calendario de intervals.icu. Desde ahí salen solos
 // hacia Garmin, y las bicis además hacia Rouvy (el entreno del día).
-// Antes de crear mira lo que ya hay, para no duplicar si se pulsa dos veces.
+// Antes de crear mira lo que ya hay: no duplica y corrige lo que haya cambiado.
 // ------------------------------------------------------------------
 
 import Foundation
@@ -17,7 +17,8 @@ struct EntrenoPlan {
 
 struct ResultadoEnvio {
     var creados = 0
-    var yaEstaban = 0
+    var actualizados = 0
+    var sinCambios = 0
 }
 
 struct ErrorIntervals: LocalizedError {
@@ -54,7 +55,8 @@ final class ClienteIntervals {
         return datos
     }
 
-    /// Crea los entrenos que aún no existan (mismo día y mismo nombre).
+    /// Deja el calendario igual que el plan: crea lo que falta y corrige lo que
+    /// ya existe ese día para ese deporte si el nombre o los pasos han cambiado.
     func enviar(_ entrenos: [EntrenoPlan]) async throws -> ResultadoEnvio {
         var resultado = ResultadoEnvio()
         guard let primero = entrenos.map(\.fecha).min(), let ultimo = entrenos.map(\.fecha).max() else {
@@ -62,17 +64,15 @@ final class ClienteIntervals {
         }
         let datos = try await peticion("/events?oldest=\(primero)&newest=\(ultimo)")
         let existentes = (try? JSONSerialization.jsonObject(with: datos) as? [[String: Any]]) ?? []
-        let claves = Set(existentes.map { evento -> String in
+        var porClave: [String: [String: Any]] = [:]
+        for evento in existentes {
             let dia = String((evento["start_date_local"] as? String ?? "").prefix(10))
-            return dia + "|" + (evento["name"] as? String ?? "")
-        })
+            let tipo = evento["type"] as? String ?? ""
+            porClave[dia + "|" + tipo] = evento
+        }
 
         for entreno in entrenos {
-            if claves.contains(entreno.fecha + "|" + entreno.nombre) {
-                resultado.yaEstaban += 1
-                continue
-            }
-            let cuerpo: [String: Any] = [
+            var cuerpo: [String: Any] = [
                 "category": "WORKOUT",
                 "start_date_local": entreno.fecha + "T00:00:00",
                 "type": entreno.tipo,
@@ -80,9 +80,22 @@ final class ClienteIntervals {
                 "name": entreno.nombre,
                 "description": entreno.pasos
             ]
-            _ = try await peticion("/events", metodo: "POST",
-                                   cuerpo: try JSONSerialization.data(withJSONObject: cuerpo))
-            resultado.creados += 1
+            if let previo = porClave[entreno.fecha + "|" + entreno.tipo] {
+                let igual = (previo["name"] as? String) == entreno.nombre
+                    && (previo["description"] as? String) == entreno.pasos
+                guard !igual, let id = (previo["id"] as? NSNumber)?.intValue else {
+                    resultado.sinCambios += 1
+                    continue
+                }
+                cuerpo["id"] = id
+                _ = try await peticion("/events/\(id)", metodo: "PUT",
+                                       cuerpo: try JSONSerialization.data(withJSONObject: cuerpo))
+                resultado.actualizados += 1
+            } else {
+                _ = try await peticion("/events", metodo: "POST",
+                                       cuerpo: try JSONSerialization.data(withJSONObject: cuerpo))
+                resultado.creados += 1
+            }
         }
         return resultado
     }

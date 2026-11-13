@@ -57,7 +57,7 @@ struct TravesiaView: View {
                 Tarjeta {
                     Text("Para vencer al jefe")
                         .font(.headline)
-                    Text("Supera tus 190 W de FTP y se abre la región 2.")
+                    Text("Supera tus 200 W de FTP y se abre la región 2.")
                         .font(.subheadline)
                         .foregroundStyle(Tema.textoSecundario)
                 }

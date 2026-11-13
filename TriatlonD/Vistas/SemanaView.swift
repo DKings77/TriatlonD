@@ -39,9 +39,12 @@ struct SemanaView: View {
     private let intervals = ClienteIntervals()
 
     // La S11 en el formato de intervals.icu. Los nombres siguen la nomenclatura
-    // "S11 D1: C1 35' Z2 2/2 | estructura". Bici en % de FTP y en escalones;
+    // "S11 D1: C1 35' Z2 2/2 | estructura". Bici en % de un FTP de 200 W y en escalones;
     // carrera por zonas de pulso con tramos de caminar; fuerza solo con duración.
     private let plan: [EntrenoPlan] = [
+        EntrenoPlan(fecha: "2026-11-14", tipo: "Ride", interior: true,
+                    nombre: "S10 D6: B3 60' Z2 140W | 10' cal + 40' Z2 140W + 10' enf",
+                    pasos: "- 10m 60%\n- 40m 70%\n- 10m 55%"),
         EntrenoPlan(fecha: "2026-11-16", tipo: "WeightTraining", interior: true,
                     nombre: "S11 D1: F1 50' 1/2",
                     pasos: "- 50m"),
@@ -50,13 +53,13 @@ struct SemanaView: View {
                     pasos: "Calentamiento\n- 5m Z1 HR\n\n5x\n- 4m Z2 HR\n- 1m Z1 HR\n\nEnfriamiento\n- 5m Z1 HR"),
         EntrenoPlan(fecha: "2026-11-17", tipo: "Ride", interior: true,
                     nombre: "S11 D2: B1 60' Z2 140W | 10' cal + 40' Z2 140W + 10' enf",
-                    pasos: "- 10m 60%\n- 40m 74%\n- 10m 55%"),
+                    pasos: "- 10m 60%\n- 40m 70%\n- 10m 55%"),
         EntrenoPlan(fecha: "2026-11-18", tipo: "WeightTraining", interior: true,
                     nombre: "S11 D3: F2 35' 1/2",
                     pasos: "- 35m"),
         EntrenoPlan(fecha: "2026-11-19", tipo: "Ride", interior: true,
-                    nombre: "S11 D4: B2 55' Z2 | 10' cal + 20' Z2 140W + 3 x (3' 171W + 3' rec) + 7' enf",
-                    pasos: "- 10m 60%\n- 20m 74%\n- 3m 90%\n- 3m 60%\n- 3m 90%\n- 3m 60%\n- 3m 90%\n- 3m 60%\n- 7m 55%"),
+                    nombre: "S11 D4: B2 55' Z2 | 10' cal + 20' Z2 140W + 3 x (3' 172W + 3' rec) + 7' enf",
+                    pasos: "- 10m 60%\n- 20m 70%\n- 3m 86%\n- 3m 60%\n- 3m 86%\n- 3m 60%\n- 3m 86%\n- 3m 60%\n- 7m 55%"),
         EntrenoPlan(fecha: "2026-11-20", tipo: "WeightTraining", interior: true,
                     nombre: "S11 D5: F3 35' 1/2",
                     pasos: "- 35m"),
@@ -69,7 +72,7 @@ struct SemanaView: View {
         Mision(id: 1, dia: "Lun", titulo: "Fuerza 50' + carrera 35'", deportes: [.fuerza, .carrera], xp: 200),
         Mision(id: 2, dia: "Mar", titulo: "Bici 60' Z2 · 140 W", deportes: [.bici], xp: 100),
         Mision(id: 3, dia: "Mié", titulo: "Fuerza 35' + natación 1.700 m", deportes: [.fuerza, .agua], xp: 200),
-        Mision(id: 4, dia: "Jue", titulo: "Bici 55' Z2 + 3 x 3' a 171 W", deportes: [.bici], xp: 100),
+        Mision(id: 4, dia: "Jue", titulo: "Bici 55' Z2 + 3 x 3' a 172 W", deportes: [.bici], xp: 100),
         Mision(id: 5, dia: "Vie", titulo: "Fuerza 35' + natación 1.900 m", deportes: [.fuerza, .agua], xp: 200),
         Mision(id: 6, dia: "Sáb", titulo: "Jefe: test de FTP + carrera 38'", deportes: [.bici, .carrera], xp: 200, esJefe: true),
         Mision(id: 7, dia: "Dom", titulo: "Descanso junto a la hoguera", deportes: [], xp: 60)
@@ -120,12 +123,12 @@ struct SemanaView: View {
         .background(Tema.fondo)
         .foregroundStyle(Tema.texto)
         .confirmationDialog("¿Enviar la semana?", isPresented: $confirmarVisible, titleVisibility: .visible) {
-            Button("Enviar 7 sesiones") {
+            Button("Enviar 8 sesiones") {
                 Task { await enviar() }
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("Se crearán en intervals.icu las 2 bicis, las 2 carreras y las 3 sesiones de fuerza. De ahí pasan solas a Garmin, y las bicis también a Rouvy. La natación y el test de FTP no se envían desde aquí.")
+            Text("Se dejarán en intervals.icu la bici de hoy, las 2 bicis, las 2 carreras y las 3 sesiones de fuerza de la S11. Lo que ya exista se corrige en vez de duplicarse. De ahí pasan solas a Garmin, y las bicis también a Rouvy. La natación y el test de FTP no se envían desde aquí.")
         }
         .alert("Semana", isPresented: Binding(get: { resultado != nil }, set: { if !$0 { resultado = nil } })) {
             Button("Entendido", role: .cancel) {}
@@ -139,7 +142,7 @@ struct SemanaView: View {
         defer { enviando = false }
         do {
             let r = try await intervals.enviar(plan)
-            resultado = "Sesiones creadas: \(r.creados). Ya estaban: \(r.yaEstaban)."
+            resultado = "Creadas: \(r.creados). Corregidas: \(r.actualizados). Sin cambios: \(r.sinCambios)."
         } catch {
             resultado = error.localizedDescription
         }
