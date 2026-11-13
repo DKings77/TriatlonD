@@ -50,6 +50,7 @@ private struct Deposito: View {
     var detalle: String
     var valor: Double?
     var color: Color
+    @State private var lleno = 0.0
 
     var body: some View {
         VStack(spacing: 6) {
@@ -57,10 +58,16 @@ private struct Deposito: View {
                 ZStack(alignment: .bottom) {
                     RoundedRectangle(cornerRadius: 12).fill(Tema.pista)
                     RoundedRectangle(cornerRadius: 12).fill(color)
-                        .frame(height: geo.size.height * min((valor ?? 0) / 600, 1))
+                        .frame(height: geo.size.height * lleno)
                 }
             }
             .frame(height: 120)
+            .onAppear {
+                withAnimation(.spring(duration: 1.1, bounce: 0.35)) { lleno = min((valor ?? 0) / 600, 1) }
+            }
+            .onChange(of: valor) { _, nuevo in
+                withAnimation(.spring(duration: 0.8, bounce: 0.3)) { lleno = min((nuevo ?? 0) / 600, 1) }
+            }
             Text(valor.map { "\(Int($0))" } ?? "Sin datos")
                 .font(.title2.bold())
             Text(titulo)

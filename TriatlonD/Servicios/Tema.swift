@@ -35,19 +35,26 @@ struct Tarjeta<Contenido: View>: View {
     }
 }
 
-/// Barra horizontal de 0 a 100.
+/// Barra horizontal de 0 a 100 que se llena al aparecer.
 struct BarraProgreso: View {
     var valor: Double
     var color: Color
+    @State private var mostrado = 0.0
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(Tema.pista)
                 Capsule().fill(color)
-                    .frame(width: geo.size.width * min(max(valor, 0), 100) / 100)
+                    .frame(width: geo.size.width * mostrado / 100)
             }
         }
         .frame(height: 8)
+        .onAppear {
+            withAnimation(.easeOut(duration: 1.0)) { mostrado = min(max(valor, 0), 100) }
+        }
+        .onChange(of: valor) { _, nuevo in
+            withAnimation(.easeOut(duration: 0.6)) { mostrado = min(max(nuevo, 0), 100) }
+        }
     }
 }

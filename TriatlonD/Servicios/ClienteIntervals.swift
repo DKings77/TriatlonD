@@ -1,19 +1,11 @@
 // ClienteIntervals.swift
 // ------------------------------------------------------------------
-// Envía entrenos al calendario de intervals.icu. Desde ahí salen solos
-// hacia Garmin, y las bicis además hacia Rouvy (el entreno del día).
-// Antes de crear mira lo que ya hay: no duplica y corrige lo que haya cambiado.
+// Sincroniza el plan con el calendario de intervals.icu. Desde ahí los
+// entrenos salen solos hacia Garmin, y las bicis además hacia Rouvy.
+// No duplica: reconoce lo ya enviado, lo corrige y lo mueve de día.
 // ------------------------------------------------------------------
 
 import Foundation
-
-struct EntrenoPlan {
-    let fecha: String        // yyyy-MM-dd
-    let tipo: String         // tipo de intervals.icu: Ride, Run, WeightTraining
-    let interior: Bool
-    let nombre: String       // con tu nomenclatura: "S11 D1: C1 35' Z2 2/2 | ..."
-    let pasos: String        // formato de intervals.icu, p. ej. "- 10m 60%" o "- 4m Z2 HR"
-}
 
 struct ResultadoEnvio {
     var creados = 0
@@ -43,7 +35,7 @@ final class ClienteIntervals {
         p.setValue("Basic \(credencial)", forHTTPHeaderField: "Authorization")
         p.setValue("application/json", forHTTPHeaderField: "Accept")
         p.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        p.setValue("TriatlonD/0.3 (uso personal)", forHTTPHeaderField: "User-Agent")
+        p.setValue("TriatlonD/0.6 (uso personal)", forHTTPHeaderField: "User-Agent")
         let (datos, respuesta) = try await URLSession.shared.data(for: p)
         let codigo = (respuesta as? HTTPURLResponse)?.statusCode ?? 0
         if codigo == 401 || codigo == 403 {
@@ -55,48 +47,73 @@ final class ClienteIntervals {
         return datos
     }
 
-    /// Deja el calendario igual que el plan: crea lo que falta y corrige lo que
-    /// ya existe ese día para ese deporte si el nombre o los pasos han cambiado.
-    func enviar(_ entrenos: [EntrenoPlan]) async throws -> ResultadoEnvio {
+    /// Devuelve el recuento y, por cada sesión, el id de su evento en intervals.icu.
+    func sincronizar(_ sesiones: [SesionPlan]) async throws -> (ResultadoEnvio, [String: Int]) {
         var resultado = ResultadoEnvio()
-        guard let primero = entrenos.map(\.fecha).min(), let ultimo = entrenos.map(\.fecha).max() else {
-            return resultado
+        var ids: [String: Int] = [:]
+        guard let primera = sesiones.map(\.fecha).min(), let ultima = sesiones.map(\.fecha).max(),
+              let inicio = Calendario.fecha(primera), let fin = Calendario.fecha(ultima) else {
+            return (resultado, ids)
         }
-        let datos = try await peticion("/events?oldest=\(primero)&newest=\(ultimo)")
+        // Margen de tres semanas a cada lado para encontrar sesiones movidas de día.
+        let desde = Calendario.texto(inicio.addingTimeInterval(-21 * 86400))
+        let hasta = Calendario.texto(fin.addingTimeInterval(21 * 86400))
+        let datos = try await peticion("/events?oldest=\(desde)&newest=\(hasta)")
         let existentes = (try? JSONSerialization.jsonObject(with: datos) as? [[String: Any]]) ?? []
-        var porClave: [String: [String: Any]] = [:]
-        for evento in existentes {
-            let dia = String((evento["start_date_local"] as? String ?? "").prefix(10))
-            let tipo = evento["type"] as? String ?? ""
-            porClave[dia + "|" + tipo] = evento
-        }
 
-        for entreno in entrenos {
+        var porId: [Int: [String: Any]] = [:]
+        var porDiaYTipo: [String: Int] = [:]
+        for evento in existentes {
+            guard let id = (evento["id"] as? NSNumber)?.intValue else { continue }
+            porId[id] = evento
+            let dia = String((evento["start_date_local"] as? String ?? "").prefix(10))
+            porDiaYTipo[dia + "|" + (evento["type"] as? String ?? "")] = id
+        }
+        var usados = Set(sesiones.compactMap(\.eventoId))
+
+        for sesion in sesiones {
+            // 1) El evento que ya creó la app. 2) Uno del mismo día y deporte aún sin dueño.
+            var id: Int?
+            if let propio = sesion.eventoId, porId[propio] != nil {
+                id = propio
+            } else if let candidato = porDiaYTipo[sesion.fecha + "|" + sesion.tipo], !usados.contains(candidato) {
+                id = candidato
+                usados.insert(candidato)
+            }
+
             var cuerpo: [String: Any] = [
                 "category": "WORKOUT",
-                "start_date_local": entreno.fecha + "T00:00:00",
-                "type": entreno.tipo,
-                "indoor": entreno.interior,
-                "name": entreno.nombre,
-                "description": entreno.pasos
+                "start_date_local": sesion.fecha + "T00:00:00",
+                "type": sesion.tipo,
+                "indoor": sesion.interior,
+                "name": sesion.nombre,
+                "description": sesion.pasos
             ]
-            if let previo = porClave[entreno.fecha + "|" + entreno.tipo] {
-                let igual = (previo["name"] as? String) == entreno.nombre
-                    && (previo["description"] as? String) == entreno.pasos
-                guard !igual, let id = (previo["id"] as? NSNumber)?.intValue else {
+
+            if let id, let previo = porId[id] {
+                let mismoDia = String((previo["start_date_local"] as? String ?? "").prefix(10)) == sesion.fecha
+                let igual = mismoDia
+                    && (previo["name"] as? String) == sesion.nombre
+                    && (previo["description"] as? String) == sesion.pasos
+                if igual {
                     resultado.sinCambios += 1
-                    continue
+                } else {
+                    cuerpo["id"] = id
+                    _ = try await peticion("/events/\(id)", metodo: "PUT",
+                                           cuerpo: try JSONSerialization.data(withJSONObject: cuerpo))
+                    resultado.actualizados += 1
                 }
-                cuerpo["id"] = id
-                _ = try await peticion("/events/\(id)", metodo: "PUT",
-                                       cuerpo: try JSONSerialization.data(withJSONObject: cuerpo))
-                resultado.actualizados += 1
+                ids[sesion.id] = id
             } else {
-                _ = try await peticion("/events", metodo: "POST",
-                                       cuerpo: try JSONSerialization.data(withJSONObject: cuerpo))
+                let respuesta = try await peticion("/events", metodo: "POST",
+                                                   cuerpo: try JSONSerialization.data(withJSONObject: cuerpo))
+                if let creado = try? JSONSerialization.jsonObject(with: respuesta) as? [String: Any],
+                   let nuevo = (creado["id"] as? NSNumber)?.intValue {
+                    ids[sesion.id] = nuevo
+                }
                 resultado.creados += 1
             }
         }
-        return resultado
+        return (resultado, ids)
     }
 }

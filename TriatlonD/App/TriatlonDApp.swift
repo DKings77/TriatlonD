@@ -18,6 +18,7 @@ struct TriatlonDApp: App {
 
 struct PestanasView: View {
     @State private var almacen = AlmacenEstado()
+    @State private var plan = AlmacenPlan()
 
     var body: some View {
         TabView {
@@ -25,7 +26,7 @@ struct PestanasView: View {
                 .tabItem { Label("Base", systemImage: "flame") }
             TravesiaView()
                 .tabItem { Label("Travesía", systemImage: "map") }
-            SemanaView()
+            SemanaView(plan: plan)
                 .tabItem { Label("Semana", systemImage: "calendar") }
             LesionView()
                 .tabItem { Label("Lesión", systemImage: "bandage") }

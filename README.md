@@ -20,5 +20,5 @@ Igual que MotoTestA2: no hace falta Mac.
 
 ## Estado
 
-Versión 0.3: las cinco pantallas. "Aprobar semana" envía bici, carrera y fuerza a intervals.icu. Lee sueño, VFC, peso y actividades de la API personal de Garmin si pegas tu clave en Ajustes; si no, usa datos de ejemplo.
+Versión 0.6: plan guardado en el iPhone y editable, sincronizado con intervals.icu; escena del campamento animada. Lee sueño, VFC, peso y actividades de la API personal de Garmin si pegas tu clave en Ajustes; si no, usa datos de ejemplo.
 En el repositorio no hay claves ni datos personales: las claves se guardan en el llavero del iPhone.

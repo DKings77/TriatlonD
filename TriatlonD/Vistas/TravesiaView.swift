@@ -27,6 +27,8 @@ struct TravesiaView: View {
         Etapa(id: 7, titulo: "Etapa 7", detalle: "Superada", estado: .superada)
     ]
 
+    @State private var visible = false
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -39,13 +41,20 @@ struct TravesiaView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(etapas) { etapa in
+                    ForEach(Array(etapas.enumerated()), id: \.element.id) { indice, etapa in
+                        // El camino se recorre de abajo arriba: lo último aparece primero.
+                        let retraso = Double(etapas.count - 1 - indice) * 0.16
                         FilaEtapa(etapa: etapa)
+                            .opacity(visible ? 1 : 0)
+                            .offset(x: visible ? 0 : -24)
+                            .animation(.spring(duration: 0.5).delay(retraso), value: visible)
                         if etapa.id != etapas.last?.id {
                             Rectangle()
                                 .fill(etapa.estado == .jefe ? Tema.pista : Tema.turquesa)
-                                .frame(width: 3, height: 26)
+                                .frame(width: 3, height: visible ? 26 : 0)
+                                .frame(height: 26, alignment: .bottom)
                                 .padding(.leading, 21)
+                                .animation(.easeOut(duration: 0.3).delay(retraso), value: visible)
                         }
                     }
                 }
@@ -66,15 +75,28 @@ struct TravesiaView: View {
         }
         .background(Tema.fondo)
         .foregroundStyle(Tema.texto)
+        .onAppear { visible = true }
+        .onDisappear { visible = false }
     }
 }
 
 private struct FilaEtapa: View {
     let etapa: Etapa
+    @State private var late = false
 
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
+                if etapa.estado == .actual || etapa.estado == .jefe {
+                    Circle()
+                        .stroke(color, lineWidth: 2)
+                        .frame(width: 45, height: 45)
+                        .scaleEffect(late ? 1.45 : 1)
+                        .opacity(late ? 0 : 0.9)
+                        .onAppear {
+                            withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) { late = true }
+                        }
+                }
                 Circle()
                     .fill(color)
                     .frame(width: 45, height: 45)

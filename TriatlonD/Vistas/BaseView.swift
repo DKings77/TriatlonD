@@ -1,7 +1,7 @@
 // BaseView.swift
 // ------------------------------------------------------------------
 // Pantalla principal: el personaje en su campamento y la energía del día.
-// El personaje es todavía un hueco: el arte llegará más adelante.
+// La escena y el personaje están dibujados y animados por código.
 // ------------------------------------------------------------------
 
 import SwiftUI
@@ -40,32 +40,19 @@ struct BaseView: View {
                         .foregroundStyle(Tema.experiencia)
                 }
 
-                ZStack {
-                    RoundedRectangle(cornerRadius: 20).fill(Tema.superficie)
-                    VStack(spacing: 10) {
-                        Image(systemName: "figure.run")
-                            .font(.system(size: 96))
-                            .foregroundStyle(Tema.turquesa)
-                        Text("Aquí irá tu personaje")
-                            .font(.footnote)
-                            .foregroundStyle(Tema.textoSecundario)
-                    }
-                }
-                .frame(height: 300)
-                .accessibilityLabel("Hueco para el personaje")
+                EscenaCampamento(energia: Juego.energia(estado) ?? 50, notaSueno: estado.sueno.puntuacion)
 
                 Tarjeta {
-                    HStack {
-                        Text("Energía")
-                            .font(.headline)
-                        Spacer()
-                        Text(textoEnergia)
-                            .font(.title2.bold())
+                    HStack(spacing: 16) {
+                        AnilloProgreso(valor: Juego.energia(estado) ?? 0, color: Tema.turquesa, etiqueta: "Energía")
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(fraseEnergia)
+                                .font(.headline)
+                            Text("La hoguera crece con tu energía. Sale de tu sueño y tu variabilidad del pulso.")
+                                .font(.footnote)
+                                .foregroundStyle(Tema.textoSecundario)
+                        }
                     }
-                    BarraProgreso(valor: Juego.energia(estado) ?? 0, color: Tema.turquesa)
-                    Text("Sale de tu sueño y tu variabilidad del pulso, y del readiness cuando está disponible.")
-                        .font(.footnote)
-                        .foregroundStyle(Tema.textoSecundario)
                 }
 
                 Tarjeta {
@@ -94,8 +81,11 @@ struct BaseView: View {
         }
     }
 
-    private var textoEnergia: String {
-        guard let e = Juego.energia(estado) else { return "Sin datos" }
-        return "\(Int(e))"
+    private var fraseEnergia: String {
+        guard let e = Juego.energia(estado) else { return "Sin datos de energía" }
+        if e >= 75 { return "Con fuerzas para todo" }
+        if e >= 55 { return "Bien, sin excesos" }
+        if e >= 35 { return "Hoy, suave" }
+        return "Toca descansar"
     }
 }
