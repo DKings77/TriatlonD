@@ -1,7 +1,7 @@
 // SemanaView.swift
 // ------------------------------------------------------------------
 // Las misiones de la semana y el botón de aprobar. De momento la semana
-// es la S11 guardada en la app. El botón envía las bicis a intervals.icu.
+// es la S11 guardada en la app. El botón envía bici, carrera y fuerza a intervals.icu.
 // ------------------------------------------------------------------
 
 import SwiftUI
@@ -38,13 +38,31 @@ struct SemanaView: View {
 
     private let intervals = ClienteIntervals()
 
-    // Las dos bicis de la S11 en el formato de intervals.icu, en escalones
-    // (sin rampas ni repeticiones) para que Rouvy las importe sin problemas.
-    private let bicis: [EntrenoBici] = [
-        EntrenoBici(fecha: "2026-11-17", nombre: "S11 D2: B1 60' Z2 140W",
+    // La S11 en el formato de intervals.icu. Los nombres siguen la nomenclatura
+    // "S11 D1: C1 35' Z2 2/2 | estructura". Bici en % de FTP y en escalones;
+    // carrera por zonas de pulso con tramos de caminar; fuerza solo con duración.
+    private let plan: [EntrenoPlan] = [
+        EntrenoPlan(fecha: "2026-11-16", tipo: "WeightTraining", interior: true,
+                    nombre: "S11 D1: F1 50' 1/2",
+                    pasos: "- 50m"),
+        EntrenoPlan(fecha: "2026-11-16", tipo: "Run", interior: false,
+                    nombre: "S11 D1: C1 35' Z2 2/2 | 5' cal + 5 x (4' Z2 + 1' caminar) + 5' enf",
+                    pasos: "Calentamiento\n- 5m Z1 HR\n\n5x\n- 4m Z2 HR\n- 1m Z1 HR\n\nEnfriamiento\n- 5m Z1 HR"),
+        EntrenoPlan(fecha: "2026-11-17", tipo: "Ride", interior: true,
+                    nombre: "S11 D2: B1 60' Z2 140W | 10' cal + 40' Z2 140W + 10' enf",
                     pasos: "- 10m 60%\n- 40m 74%\n- 10m 55%"),
-        EntrenoBici(fecha: "2026-11-19", nombre: "S11 D4: B2 55' Z2 + 3x3' 171W",
-                    pasos: "- 10m 60%\n- 20m 74%\n- 3m 90%\n- 3m 60%\n- 3m 90%\n- 3m 60%\n- 3m 90%\n- 3m 60%\n- 7m 55%")
+        EntrenoPlan(fecha: "2026-11-18", tipo: "WeightTraining", interior: true,
+                    nombre: "S11 D3: F2 35' 1/2",
+                    pasos: "- 35m"),
+        EntrenoPlan(fecha: "2026-11-19", tipo: "Ride", interior: true,
+                    nombre: "S11 D4: B2 55' Z2 | 10' cal + 20' Z2 140W + 3 x (3' 171W + 3' rec) + 7' enf",
+                    pasos: "- 10m 60%\n- 20m 74%\n- 3m 90%\n- 3m 60%\n- 3m 90%\n- 3m 60%\n- 3m 90%\n- 3m 60%\n- 7m 55%"),
+        EntrenoPlan(fecha: "2026-11-20", tipo: "WeightTraining", interior: true,
+                    nombre: "S11 D5: F3 35' 1/2",
+                    pasos: "- 35m"),
+        EntrenoPlan(fecha: "2026-11-21", tipo: "Run", interior: false,
+                    nombre: "S11 D6: C2 38' Z2 2/2 | 5' cal + 4 x (6' Z2 + 1' caminar) + 5' enf",
+                    pasos: "Calentamiento\n- 5m Z1 HR\n\n4x\n- 6m Z2 HR\n- 1m Z1 HR\n\nEnfriamiento\n- 5m Z1 HR")
     ]
 
     private let misiones: [Mision] = [
@@ -93,7 +111,7 @@ struct SemanaView: View {
                 }
                 .disabled(enviando)
 
-                Text("Por ahora se envían las bicis del martes y el jueves. Carrera, natación y fuerza siguen programándose en Garmin.")
+                Text("Se envían bici, carrera y fuerza. La natación sigue programándose en Garmin y el test de FTP se hace con el de Rouvy.")
                     .font(.caption)
                     .foregroundStyle(Tema.textoSecundario)
             }
@@ -102,12 +120,12 @@ struct SemanaView: View {
         .background(Tema.fondo)
         .foregroundStyle(Tema.texto)
         .confirmationDialog("¿Enviar la semana?", isPresented: $confirmarVisible, titleVisibility: .visible) {
-            Button("Enviar 2 sesiones de bici") {
+            Button("Enviar 7 sesiones") {
                 Task { await enviar() }
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("Se crearán en intervals.icu la bici del martes 17 y la del jueves 19. De ahí pasan solas a Rouvy y a Garmin.")
+            Text("Se crearán en intervals.icu las 2 bicis, las 2 carreras y las 3 sesiones de fuerza. De ahí pasan solas a Garmin, y las bicis también a Rouvy. La natación y el test de FTP no se envían desde aquí.")
         }
         .alert("Semana", isPresented: Binding(get: { resultado != nil }, set: { if !$0 { resultado = nil } })) {
             Button("Entendido", role: .cancel) {}
@@ -120,7 +138,7 @@ struct SemanaView: View {
         enviando = true
         defer { enviando = false }
         do {
-            let r = try await intervals.enviar(bicis)
+            let r = try await intervals.enviar(plan)
             resultado = "Sesiones creadas: \(r.creados). Ya estaban: \(r.yaEstaban)."
         } catch {
             resultado = error.localizedDescription

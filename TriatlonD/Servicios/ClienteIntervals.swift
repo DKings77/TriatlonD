@@ -1,16 +1,18 @@
 // ClienteIntervals.swift
 // ------------------------------------------------------------------
-// Envía entrenos de bici al calendario de intervals.icu. Desde ahí
-// salen solos hacia Rouvy (el entreno del día) y hacia Garmin.
+// Envía entrenos al calendario de intervals.icu. Desde ahí salen solos
+// hacia Garmin, y las bicis además hacia Rouvy (el entreno del día).
 // Antes de crear mira lo que ya hay, para no duplicar si se pulsa dos veces.
 // ------------------------------------------------------------------
 
 import Foundation
 
-struct EntrenoBici {
+struct EntrenoPlan {
     let fecha: String        // yyyy-MM-dd
-    let nombre: String
-    let pasos: String        // formato de intervals.icu, p. ej. "- 10m 60%"
+    let tipo: String         // tipo de intervals.icu: Ride, Run, WeightTraining
+    let interior: Bool
+    let nombre: String       // con tu nomenclatura: "S11 D1: C1 35' Z2 2/2 | ..."
+    let pasos: String        // formato de intervals.icu, p. ej. "- 10m 60%" o "- 4m Z2 HR"
 }
 
 struct ResultadoEnvio {
@@ -53,7 +55,7 @@ final class ClienteIntervals {
     }
 
     /// Crea los entrenos que aún no existan (mismo día y mismo nombre).
-    func enviar(_ entrenos: [EntrenoBici]) async throws -> ResultadoEnvio {
+    func enviar(_ entrenos: [EntrenoPlan]) async throws -> ResultadoEnvio {
         var resultado = ResultadoEnvio()
         guard let primero = entrenos.map(\.fecha).min(), let ultimo = entrenos.map(\.fecha).max() else {
             return resultado
@@ -73,8 +75,8 @@ final class ClienteIntervals {
             let cuerpo: [String: Any] = [
                 "category": "WORKOUT",
                 "start_date_local": entreno.fecha + "T00:00:00",
-                "type": "Ride",
-                "indoor": true,
+                "type": entreno.tipo,
+                "indoor": entreno.interior,
                 "name": entreno.nombre,
                 "description": entreno.pasos
             ]
