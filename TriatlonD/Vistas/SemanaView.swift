@@ -1,7 +1,7 @@
 // SemanaView.swift
 // ------------------------------------------------------------------
 // Las misiones de la semana y el botón de aprobar. De momento la semana
-// es la S11 guardada en la app y el botón todavía no envía nada.
+// es la S11 guardada en la app. El botón envía las bicis a intervals.icu.
 // ------------------------------------------------------------------
 
 import SwiftUI
@@ -32,7 +32,20 @@ struct Mision: Identifiable {
 }
 
 struct SemanaView: View {
-    @State private var avisoVisible = false
+    @State private var confirmarVisible = false
+    @State private var enviando = false
+    @State private var resultado: String?
+
+    private let intervals = ClienteIntervals()
+
+    // Las dos bicis de la S11 en el formato de intervals.icu, en escalones
+    // (sin rampas ni repeticiones) para que Rouvy las importe sin problemas.
+    private let bicis: [EntrenoBici] = [
+        EntrenoBici(fecha: "2026-11-17", nombre: "S11 D2: B1 60' Z2 140W",
+                    pasos: "- 10m 60%\n- 40m 74%\n- 10m 55%"),
+        EntrenoBici(fecha: "2026-11-19", nombre: "S11 D4: B2 55' Z2 + 3x3' 171W",
+                    pasos: "- 10m 60%\n- 20m 74%\n- 3m 90%\n- 3m 60%\n- 3m 90%\n- 3m 60%\n- 3m 90%\n- 3m 60%\n- 7m 55%")
+    ]
 
     private let misiones: [Mision] = [
         Mision(id: 1, dia: "Lun", titulo: "Fuerza 50' + carrera 35'", deportes: [.fuerza, .carrera], xp: 200),
@@ -69,24 +82,48 @@ struct SemanaView: View {
                 .font(.subheadline)
 
                 Button {
-                    avisoVisible = true
+                    confirmarVisible = true
                 } label: {
-                    Text("Aprobar semana")
+                    Text(enviando ? "Enviando…" : "Aprobar semana")
                         .font(.headline)
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .background(Tema.turquesa)
                         .foregroundStyle(Tema.fondo)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
+                .disabled(enviando)
+
+                Text("Por ahora se envían las bicis del martes y el jueves. Carrera, natación y fuerza siguen programándose en Garmin.")
+                    .font(.caption)
+                    .foregroundStyle(Tema.textoSecundario)
             }
             .padding(20)
         }
         .background(Tema.fondo)
         .foregroundStyle(Tema.texto)
-        .alert("Todavía no envía nada", isPresented: $avisoVisible) {
+        .confirmationDialog("¿Enviar la semana?", isPresented: $confirmarVisible, titleVisibility: .visible) {
+            Button("Enviar 2 sesiones de bici") {
+                Task { await enviar() }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("Se crearán en intervals.icu la bici del martes 17 y la del jueves 19. De ahí pasan solas a Rouvy y a Garmin.")
+        }
+        .alert("Semana", isPresented: Binding(get: { resultado != nil }, set: { if !$0 { resultado = nil } })) {
             Button("Entendido", role: .cancel) {}
         } message: {
-            Text("El envío a Garmin y Rouvy llegará cuando la app se conecte con el servidor del portátil.")
+            Text(resultado ?? "")
+        }
+    }
+
+    private func enviar() async {
+        enviando = true
+        defer { enviando = false }
+        do {
+            let r = try await intervals.enviar(bicis)
+            resultado = "Sesiones creadas: \(r.creados). Ya estaban: \(r.yaEstaban)."
+        } catch {
+            resultado = error.localizedDescription
         }
     }
 }

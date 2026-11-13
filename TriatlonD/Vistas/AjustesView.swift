@@ -11,6 +11,8 @@ struct AjustesView: View {
     @Environment(\.dismiss) private var cerrar
     @State private var claveGarmin = ""
     @State private var hayClave = Llavero.leer("garminClave") != nil
+    @State private var claveIntervals = ""
+    @State private var hayIntervals = Llavero.leer("intervalsClave") != nil
 
     var body: some View {
         NavigationStack {
@@ -44,6 +46,31 @@ struct AjustesView: View {
                             Task { await almacen.recargar() }
                         }
                     }
+                }
+
+                Section {
+                    SecureField("Clave de intervals.icu", text: $claveIntervals)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    Text(hayIntervals ? "Hay una clave guardada en este iPhone." : "No hay ninguna clave guardada.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button("Guardar") {
+                        Llavero.guardar(claveIntervals.trimmingCharacters(in: .whitespacesAndNewlines), clave: "intervalsClave")
+                        claveIntervals = ""
+                        hayIntervals = true
+                    }
+                    .disabled(claveIntervals.isEmpty)
+                    if hayIntervals {
+                        Button("Borrar la clave", role: .destructive) {
+                            Llavero.guardar("", clave: "intervalsClave")
+                            hayIntervals = false
+                        }
+                    }
+                } header: {
+                    Text("intervals.icu")
+                } footer: {
+                    Text("Sirve para enviar los entrenos de bici desde la pestaña Semana. Solo se envía a intervals.icu.")
                 }
 
                 Section {
