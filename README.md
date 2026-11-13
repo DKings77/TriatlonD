@@ -20,5 +20,5 @@ Igual que MotoTestA2: no hace falta Mac.
 
 ## Estado
 
-Versión 0.1: esqueleto con datos de ejemplo guardados en la app. Aún no se conecta al servidor.
+Versión 0.1: las cinco pantallas con datos de ejemplo guardados en la app. Aún no se conecta al servidor.
 En el repositorio no hay claves ni datos personales: viven en el servidor del portátil.

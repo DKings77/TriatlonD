@@ -17,6 +17,7 @@ enum Tema {
     static let natacion = Color(red: 0.231, green: 0.655, blue: 1.0)
     static let bici = Color(red: 1.0, green: 0.541, blue: 0.239)
     static let carrera = Color(red: 0.482, green: 0.878, blue: 0.416)
+    static let fuerza = Color(red: 0.788, green: 0.722, blue: 1.0)
 }
 
 /// Tarjeta con el fondo y las esquinas comunes a toda la app.
