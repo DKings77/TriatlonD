@@ -20,5 +20,5 @@ Igual que MotoTestA2: no hace falta Mac.
 
 ## Estado
 
-Versión 0.1: las cinco pantallas con datos de ejemplo guardados en la app. Aún no se conecta al servidor.
-En el repositorio no hay claves ni datos personales: viven en el servidor del portátil.
+Versión 0.2: las cinco pantallas. Lee sueño, VFC, peso y actividades de la API personal de Garmin si pegas tu clave en Ajustes; si no, usa datos de ejemplo.
+En el repositorio no hay claves ni datos personales: las claves se guardan en el llavero del iPhone.

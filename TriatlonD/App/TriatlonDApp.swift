@@ -1,7 +1,7 @@
 // TriatlonDApp.swift
 // ------------------------------------------------------------------
 // Punto de entrada de la app y barra de pestañas con las cinco pantallas.
-// De momento todas leen los datos de ejemplo guardados en la app.
+// Los datos salen de Garmin si hay clave en Ajustes; si no, de los de ejemplo.
 // ------------------------------------------------------------------
 
 import SwiftUI
@@ -17,11 +17,11 @@ struct TriatlonDApp: App {
 }
 
 struct PestanasView: View {
-    private let estado = DatosEjemplo.hoy
+    @State private var almacen = AlmacenEstado()
 
     var body: some View {
         TabView {
-            BaseView(estado: estado)
+            BaseView(almacen: almacen)
                 .tabItem { Label("Base", systemImage: "flame") }
             TravesiaView()
                 .tabItem { Label("Travesía", systemImage: "map") }
@@ -29,9 +29,10 @@ struct PestanasView: View {
                 .tabItem { Label("Semana", systemImage: "calendar") }
             LesionView()
                 .tabItem { Label("Lesión", systemImage: "bandage") }
-            FichaView(estado: estado)
+            FichaView(estado: almacen.estado)
                 .tabItem { Label("Ficha", systemImage: "chart.bar") }
         }
         .tint(Tema.turquesa)
+        .task { await almacen.recargar() }
     }
 }

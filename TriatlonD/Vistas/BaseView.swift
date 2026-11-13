@@ -7,17 +7,37 @@
 import SwiftUI
 
 struct BaseView: View {
-    let estado: EstadoDia
+    let almacen: AlmacenEstado
+    @State private var ajustesVisibles = false
+
+    private var estado: EstadoDia { almacen.estado }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("David")
-                        .font(.largeTitle.bold())
-                    Text("Región 1 · etapa 11")
-                        .font(.subheadline)
-                        .foregroundStyle(Tema.textoSecundario)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("David")
+                            .font(.largeTitle.bold())
+                        Text("Región 1 · etapa 11")
+                            .font(.subheadline)
+                            .foregroundStyle(Tema.textoSecundario)
+                    }
+                    Spacer()
+                    Button {
+                        ajustesVisibles = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.title2)
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Ajustes")
+                }
+
+                if let aviso = almacen.aviso {
+                    Text(aviso)
+                        .font(.footnote)
+                        .foregroundStyle(Tema.experiencia)
                 }
 
                 ZStack {
@@ -43,7 +63,7 @@ struct BaseView: View {
                             .font(.title2.bold())
                     }
                     BarraProgreso(valor: Juego.energia(estado) ?? 0, color: Tema.turquesa)
-                    Text("Sale de tu readiness, tu sueño y tu variabilidad del pulso.")
+                    Text("Sale de tu sueño y tu variabilidad del pulso, y del readiness cuando está disponible.")
                         .font(.footnote)
                         .foregroundStyle(Tema.textoSecundario)
                 }
@@ -68,6 +88,10 @@ struct BaseView: View {
         }
         .background(Tema.fondo)
         .foregroundStyle(Tema.texto)
+        .refreshable { await almacen.recargar() }
+        .sheet(isPresented: $ajustesVisibles) {
+            AjustesView(almacen: almacen)
+        }
     }
 
     private var textoEnergia: String {
