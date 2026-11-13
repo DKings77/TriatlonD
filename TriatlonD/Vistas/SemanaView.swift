@@ -42,8 +42,11 @@ struct SemanaView: View {
     // "S11 D1: C1 35' Z2 2/2 | estructura". Bici en % de un FTP de 200 W y en escalones;
     // carrera por zonas de pulso con tramos de caminar; fuerza solo con duración.
     private let plan: [EntrenoPlan] = [
-        EntrenoPlan(fecha: "2026-11-14", tipo: "Ride", interior: true,
-                    nombre: "S10 D6: B3 60' Z2 140W | 10' cal + 40' Z2 140W + 10' enf",
+        EntrenoPlan(fecha: "2026-11-14", tipo: "Run", interior: false,
+                    nombre: "S10 D6: C2 35' Z2 | 5' cal + 5 x (4' Z2 + 1' caminar) + 5' enf",
+                    pasos: "Calentamiento\n- 5m Z1 HR\n\n5x\n- 4m Z2 HR\n- 1m Z1 HR\n\nEnfriamiento\n- 5m Z1 HR"),
+        EntrenoPlan(fecha: "2026-11-15", tipo: "Ride", interior: true,
+                    nombre: "S10 D7: B3 60' Z2 140W | 10' cal + 40' Z2 140W + 10' enf",
                     pasos: "- 10m 60%\n- 40m 70%\n- 10m 55%"),
         EntrenoPlan(fecha: "2026-11-16", tipo: "WeightTraining", interior: true,
                     nombre: "S11 D1: F1 50' 1/2",
@@ -123,12 +126,12 @@ struct SemanaView: View {
         .background(Tema.fondo)
         .foregroundStyle(Tema.texto)
         .confirmationDialog("¿Enviar la semana?", isPresented: $confirmarVisible, titleVisibility: .visible) {
-            Button("Enviar 8 sesiones") {
+            Button("Enviar 9 sesiones") {
                 Task { await enviar() }
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("Se dejarán en intervals.icu la bici de hoy, las 2 bicis, las 2 carreras y las 3 sesiones de fuerza de la S11. Lo que ya exista se corrige en vez de duplicarse. De ahí pasan solas a Garmin, y las bicis también a Rouvy. La natación y el test de FTP no se envían desde aquí.")
+            Text("Se dejarán en intervals.icu la carrera del sábado 14, la bici del domingo 15, las 2 bicis, las 2 carreras y las 3 sesiones de fuerza de la S11. Lo que ya exista se corrige en vez de duplicarse. De ahí pasan solas a Garmin, y las bicis también a Rouvy. La natación y el test de FTP no se envían desde aquí.")
         }
         .alert("Semana", isPresented: Binding(get: { resultado != nil }, set: { if !$0 { resultado = nil } })) {
             Button("Entendido", role: .cancel) {}
