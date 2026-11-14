@@ -214,11 +214,7 @@ struct GraficaEficiencia: View {
             ])
             .chartYScale(domain: .automatic(includesZero: false))
             .frame(height: 190)
-            .mask(alignment: .leading) {
-                GeometryReader { geo in
-                    Rectangle().frame(width: geo.size.width * avance)
-                }
-            }
+            .revelado(avance)
             Text("Lo que rindes por cada pulsación. Si la línea sube con el paso de las semanas, tu base aeróbica mejora aunque no hagas test.")
                 .font(.caption)
                 .foregroundStyle(Tema.textoSecundario)
@@ -330,11 +326,7 @@ struct GraficaNatacion: View {
                 }
             }
             .frame(height: 160)
-            .mask(alignment: .leading) {
-                GeometryReader { geo in
-                    Rectangle().frame(width: geo.size.width * avance)
-                }
-            }
+            .revelado(avance)
             if let ultima = sesiones.last {
                 Text("Última sesión: \(Analisis.minutosYSegundos(ultima.valor)) min/100 m, descansos incluidos. Cuanto más abajo, más rápido.")
                     .font(.caption)
@@ -411,6 +403,14 @@ struct GraficaPeso: View {
                 Text("No hay pesadas en Garmin en los últimos 60 días. Registra tu peso en Garmin Connect y aparecerá aquí.")
                     .font(.subheadline)
                     .foregroundStyle(Tema.textoSecundario)
+            } else if dias.count < 3, let ultima = dias.last {
+                Text("\(String(format: "%.1f", ultima.valor)) kg")
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                Text("Con tu FTP de \(Int(Referencias.ftp)) W son \(String(format: "%.2f", Referencias.ftp / ultima.valor)) W/kg.")
+                    .font(.footnote)
+                Text("Solo hay \(dias.count == 1 ? "una pesada" : "dos pesadas") en Garmin en los últimos 60 días. Con tres o más aparece la gráfica con su tendencia.")
+                    .font(.caption)
+                    .foregroundStyle(Tema.textoSecundario)
             } else {
                 Chart {
                     ForEach(dias) { d in
@@ -425,11 +425,7 @@ struct GraficaPeso: View {
                 }
                 .chartYScale(domain: .automatic(includesZero: false))
                 .frame(height: 160)
-                .mask(alignment: .leading) {
-                    GeometryReader { geo in
-                        Rectangle().frame(width: geo.size.width * avance)
-                    }
-                }
+                .revelado(avance)
                 if let ultimo = tendencia.last {
                     Text("Tendencia: \(String(format: "%.1f", ultimo.valor)) kg. Con tu FTP de \(Int(Referencias.ftp)) W son \(String(format: "%.2f", Referencias.ftp / ultimo.valor)) W/kg.")
                         .font(.footnote)

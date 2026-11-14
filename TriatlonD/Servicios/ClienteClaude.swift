@@ -20,7 +20,7 @@ struct ErrorClaude: LocalizedError {
 final class ClienteClaude {
     static let modelo = "claude-sonnet-5-5"
 
-    func proponer(lunes: Date, contexto: String, indicaciones: String) async throws -> PropuestaSemana {
+    func proponer(lunes: Date, contexto: String, exigencia: String, indicaciones: String) async throws -> PropuestaSemana {
         guard let clave = Llavero.leer("claudeClave"), !clave.isEmpty else {
             throw ErrorClaude(mensaje: "Falta la clave de la API de Claude en Ajustes.")
         }
@@ -32,6 +32,12 @@ final class ClienteClaude {
         peticion.setValue("application/json", forHTTPHeaderField: "content-type")
 
         var mensaje = contexto
+        switch exigencia {
+        case "Suave": mensaje += "\n\nEXIGENCIA PEDIDA: semana suave, de descarga: menos horas y sin intensidad."
+        case "Normal": mensaje += "\n\nEXIGENCIA PEDIDA: semana normal, como sus semanas habituales."
+        case "Fuerte": mensaje += "\n\nEXIGENCIA PEDIDA: semana de carga: la parte alta de los rangos de horas y un día de bici con intensidad. La carrera no cambia: sigue las reglas de la lesión."
+        default: break
+        }
         let extra = indicaciones.trimmingCharacters(in: .whitespacesAndNewlines)
         if !extra.isEmpty {
             mensaje += "\n\nINDICACIONES DE DAVID PARA ESTA SEMANA (mandan sobre lo demás):\n" + extra
@@ -104,8 +110,14 @@ enum ContextoIA {
     progresando poco a poco (escalera: tramos de 3', 4', 6', 10', 20' seguidos). Máximo dos carreras \
     por semana. Si el dolor de la última carrera fue 4 o más sobre 10, no subas el escalón o quita una carrera.
 
-    CARGA: si la variabilidad del pulso baja, el sueño es malo o la carga de la semana supera mucho \
-    al fondo, propón una semana más suave y dilo. Cada cuatro semanas, una de descarga.
+    CARGA: por defecto la semana tiene que parecerse en horas a sus semanas normales recientes \
+    (mira HORAS POR SEMANA) y progresar un poco: entre 6 y 8 horas con las siete franjas ocupadas. \
+    Bicis de entre semana de 60 a 75 minutos, la del sábado de 90 a 120, piscinas de 1700 a 2200 m. \
+    Si la relación carga/fondo está por debajo de 0,8 hay margen: sube, no bajes. Una sola noche mala \
+    o una semana floja por enfermedad ya pasada no justifican una semana suave. Aligera solo si hay \
+    varias señales juntas (variabilidad del pulso cayendo varios días, sueño malo varias noches, \
+    relación por encima de 1,3) y dilo. Cada cuatro semanas, una de descarga. En bici puede haber \
+    un día con bloques de tempo o sweet spot (76-92 % del FTP); el resto, Z2 (65-75 %).
 
     REFERENCIAS: FTP 200 W. Zonas de pulso: Z1 108-135, Z2 136-150, Z3 151-159, Z4 160-170, Z5 171-187 ppm.
 
@@ -181,6 +193,16 @@ enum ContextoIA {
             if !noches.isEmpty { lineas.append("- Horas de sueño de las últimas noches: \(noches)") }
             let vfc = h.vfc.suffix(7).map { String(Int($0.anoche)) }.joined(separator: ", ")
             if !vfc.isEmpty { lineas.append("- Variabilidad de las últimas noches (ms): \(vfc)") }
+
+            let semanas = Dictionary(grouping: h.volumen, by: \.inicio).sorted { $0.key < $1.key }
+            if !semanas.isEmpty {
+                lineas.append("\nHORAS POR SEMANA (la última está sin terminar):")
+                for (inicio, partes) in semanas {
+                    let total = partes.map(\.horas).reduce(0, +)
+                    let detalle = partes.map { "\($0.deporte) \(String(format: "%.1f", $0.horas))" }.joined(separator: ", ")
+                    lineas.append("- Semana del \(Calendario.texto(inicio)): \(String(format: "%.1f", total)) h (\(detalle))")
+                }
+            }
 
             let limite = Calendario.texto(Date().addingTimeInterval(-21 * 86400))
             let recientes = h.sesiones.filter { $0.dia >= limite }.sorted { $0.dia < $1.dia }

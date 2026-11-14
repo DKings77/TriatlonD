@@ -46,7 +46,7 @@ enum Lecturas {
         if let ultimo = h.carga.last, ultimo.cronica > 0 {
             let relacion = ultimo.aguda / ultimo.cronica
             let pico = h.carga.max { $0.aguda < $1.aguda }
-            var frase = "Carga: llevas \(Int(ultimo.aguda)) esta semana sobre un fondo de \(Int(ultimo.cronica)), relación \(String(format: "%.1f", relacion))."
+            var frase = "Carga: llevas \(Int(ultimo.aguda.rounded())) esta semana sobre un fondo de \(Int(ultimo.cronica.rounded())), relación \(String(format: "%.1f", relacion))."
             if let pico, pico.aguda > ultimo.aguda * 1.3 {
                 frase += " Tu pico del mes fue \(Int(pico.aguda)) el \(formato.string(from: pico.fecha))."
             }

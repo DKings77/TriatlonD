@@ -15,6 +15,7 @@ struct PropuestaIAView: View {
 
     @State private var lunes = PropuestaIAView.lunesPorDefecto()
     @State private var indicaciones = ""
+    @State private var exigencia = "Automática"
     @State private var pensando = false
     @State private var propuesta: PropuestaSemana?
     @State private var fallo: String?
@@ -55,6 +56,18 @@ struct PropuestaIAView: View {
                                 .font(.caption)
                                 .foregroundStyle(Tema.alerta)
                         }
+                    }
+
+                    Tarjeta {
+                        Text("Exigencia")
+                            .font(.headline)
+                        Picker("Exigencia", selection: $exigencia) {
+                            ForEach(["Automática", "Suave", "Normal", "Fuerte"], id: \.self) { Text($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        Text("En automática decide según tu carga, sueño y variabilidad.")
+                            .font(.caption)
+                            .foregroundStyle(Tema.textoSecundario)
                     }
 
                     Tarjeta {
@@ -155,7 +168,7 @@ struct PropuestaIAView: View {
         let contexto = ContextoIA.texto(lunes: lunes, estado: almacen.estado, esReal: almacen.esReal,
                                         historico: almacen.historico, plan: plan.sesiones, dolor: dolor)
         do {
-            propuesta = try await claude.proponer(lunes: lunes, contexto: contexto, indicaciones: indicaciones)
+            propuesta = try await claude.proponer(lunes: lunes, contexto: contexto, exigencia: exigencia, indicaciones: indicaciones)
         } catch {
             fallo = error.localizedDescription
         }

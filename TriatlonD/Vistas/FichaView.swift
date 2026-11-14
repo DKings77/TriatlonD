@@ -154,11 +154,7 @@ private struct GraficaCarga: View {
             }
             .chartForegroundStyleScale(["Esta semana": Tema.bici, "Tu fondo": Tema.turquesa])
             .frame(height: 180)
-            .mask(alignment: .leading) {
-                GeometryReader { geo in
-                    Rectangle().frame(width: geo.size.width * avance)
-                }
-            }
+            .revelado(avance)
             Text("Cuando la línea naranja va muy por encima de la turquesa, estás cargando más de lo que tu cuerpo tiene asimilado.")
                 .font(.caption)
                 .foregroundStyle(Tema.textoSecundario)
@@ -233,11 +229,7 @@ private struct GraficaVFC: View {
                 }
             }
             .frame(height: 170)
-            .mask(alignment: .leading) {
-                GeometryReader { geo in
-                    Rectangle().frame(width: geo.size.width * avance)
-                }
-            }
+            .revelado(avance)
             Text("Azul, cada noche. Amarillo discontinuo, tu media de siete días. Si el azul cae varios días por debajo, toca aflojar.")
                 .font(.caption)
                 .foregroundStyle(Tema.textoSecundario)

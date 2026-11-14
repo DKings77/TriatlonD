@@ -58,3 +58,18 @@ struct BarraProgreso: View {
         }
     }
 }
+
+extension View {
+    /// Descubre una gráfica de izquierda a derecha. Deja margen para que no se
+    /// recorten los números de los ejes, que sobresalen un poco del marco.
+    func revelado(_ avance: Double) -> some View {
+        mask(alignment: .leading) {
+            GeometryReader { geo in
+                Rectangle()
+                    .frame(width: (geo.size.width + 40) * avance, height: geo.size.height + 28)
+                    .offset(y: -14)
+            }
+        }
+        .padding(.trailing, 6)
+    }
+}
