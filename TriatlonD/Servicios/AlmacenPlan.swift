@@ -23,6 +23,13 @@ final class AlmacenPlan {
     private let intervals = ClienteIntervals()
 
     init() {
+        pendientesBorrar = []
+        sesiones = PlanInicial.sesiones
+        cargarGuardado()
+    }
+
+    /// Lee el plan guardado (también tras restaurar una copia).
+    func cargarGuardado() {
         pendientesBorrar = UserDefaults.standard.array(forKey: AlmacenPlan.claveBorrar) as? [Int] ?? []
         if let datos = UserDefaults.standard.data(forKey: AlmacenPlan.claveGuardado),
            let guardadas = try? JSONDecoder().decode([SesionPlan].self, from: datos) {

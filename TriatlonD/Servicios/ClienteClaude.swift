@@ -177,6 +177,9 @@ enum ContextoIA {
         dato("Sueño de anoche", estado.sueno.horas, " h")
         dato("Nota de sueño", estado.sueno.puntuacion)
         dato("Peso", estado.pesoKg, " kg")
+        if let motivos = Juego.modoBaja(estado, historico: historico) {
+            lineas.append("- MODO BAJA ACTIVO (fatiga): " + motivos.joined(separator: " "))
+        }
         let diario = DiarioDolor.registros.suffix(6)
         if diario.isEmpty {
             lineas.append(dolor >= 0 ? "- Dolor en la última carrera: \(dolor) sobre 10" : "- Dolor en las carreras: sin registrar")

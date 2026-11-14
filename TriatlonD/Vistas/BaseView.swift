@@ -20,7 +20,7 @@ struct BaseView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("David")
                             .font(.largeTitle.bold())
-                        Text("Región 1 · etapa 11")
+                        Text(Travesia.subtitulo(Date()))
                             .font(.subheadline)
                             .foregroundStyle(Tema.textoSecundario)
                     }
@@ -81,6 +81,10 @@ struct BaseView: View {
                     .transition(.scale(scale: 0.9).combined(with: .opacity))
                 }
 
+                if let motivos = Juego.modoBaja(estado, historico: almacen.historico) {
+                    TarjetaModoBaja(motivos: motivos)
+                }
+
                 EscenaCorredor(energia: Juego.energia(estado) ?? 50, notaSueno: estado.sueno.puntuacion)
 
                 Tarjeta {
@@ -129,7 +133,7 @@ struct BaseView: View {
         .foregroundStyle(Tema.texto)
         .refreshable { await almacen.recargar() }
         .sheet(isPresented: $ajustesVisibles) {
-            AjustesView(almacen: almacen)
+            AjustesView(almacen: almacen, plan: plan)
         }
     }
 
@@ -139,5 +143,40 @@ struct BaseView: View {
         if e >= 55 { return "Bien, sin excesos" }
         if e >= 35 { return "Hoy, suave" }
         return "Toca descansar"
+    }
+}
+
+/// Aviso de Modo Baja: el cuerpo pide aflojar.
+struct TarjetaModoBaja: View {
+    let motivos: [String]
+    @State private var latido = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: "battery.25")
+                    .font(.title2)
+                    .foregroundStyle(Tema.alerta)
+                    .scaleEffect(latido ? 1.12 : 1)
+                Text("Modo Baja")
+                    .font(.title3.bold())
+                    .foregroundStyle(Tema.alerta)
+            }
+            ForEach(motivos, id: \.self) { motivo in
+                Text("• " + motivo)
+                    .font(.subheadline)
+            }
+            Text("Hoy, sesión suave o descanso. El entrenador lo tendrá en cuenta si le pides la semana.")
+                .font(.footnote)
+                .foregroundStyle(Tema.textoSecundario)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Tema.alerta.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Tema.alerta.opacity(0.6), lineWidth: 1))
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.9).repeatForever()) { latido = true }
+        }
     }
 }

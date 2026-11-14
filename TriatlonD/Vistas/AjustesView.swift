@@ -8,6 +8,10 @@ import SwiftUI
 
 struct AjustesView: View {
     let almacen: AlmacenEstado
+    let plan: AlmacenPlan
+    @State private var archivoCopia: URL?
+    @State private var importando = false
+    @State private var mensajeCopia: String?
     @Environment(\.dismiss) private var cerrar
     @State private var claveGarmin = ""
     @State private var hayClave = Llavero.leer("garminClave") != nil
@@ -149,6 +153,34 @@ struct AjustesView: View {
                 }
 
                 Section {
+                    if let archivoCopia {
+                        ShareLink(item: archivoCopia) {
+                            Label("Guardar la copia…", systemImage: "square.and.arrow.up")
+                        }
+                    } else {
+                        Button {
+                            do { archivoCopia = try Copia.exportar() }
+                            catch { mensajeCopia = "No se ha podido crear la copia: \(error.localizedDescription)" }
+                        } label: {
+                            Label("Crear copia de seguridad", systemImage: "externaldrive.badge.plus")
+                        }
+                    }
+                    Button {
+                        importando = true
+                    } label: {
+                        Label("Restaurar una copia", systemImage: "arrow.down.doc")
+                    }
+                    if let mensajeCopia {
+                        Text(mensajeCopia)
+                            .font(.footnote)
+                    }
+                } header: {
+                    Text("Copia de seguridad")
+                } footer: {
+                    Text("Guarda el plan, el diario de dolor, la historia de tu nota y tus referencias. Guárdala en iCloud Drive o en Archivos antes de borrar o reinstalar la app. Las claves no van en la copia: habría que volver a pegarlas.")
+                }
+
+                Section {
                     if almacen.cargando {
                         Text("Consultando a Garmin…")
                     } else if almacen.esReal {
@@ -159,6 +191,20 @@ struct AjustesView: View {
                     }
                 } header: {
                     Text("Estado")
+                }
+            }
+            .fileImporter(isPresented: $importando, allowedContentTypes: [.json]) { resultado in
+                switch resultado {
+                case .success(let url):
+                    do {
+                        let n = try Copia.importar(url)
+                        plan.cargarGuardado()
+                        mensajeCopia = "Copia restaurada: \(n) datos recuperados. Cierra y abre la app para ver tus referencias al día."
+                    } catch {
+                        mensajeCopia = error.localizedDescription
+                    }
+                case .failure(let error):
+                    mensajeCopia = error.localizedDescription
                 }
             }
             .navigationTitle("Ajustes")

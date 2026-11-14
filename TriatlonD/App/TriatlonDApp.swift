@@ -25,7 +25,7 @@ struct PestanasView: View {
         TabView {
             BaseView(almacen: almacen, plan: plan)
                 .tabItem { Label("Base", systemImage: "flame") }
-            TravesiaView()
+            TravesiaView(plan: plan, almacen: almacen)
                 .tabItem { Label("Travesía", systemImage: "map") }
             SemanaView(plan: plan, almacen: almacen)
                 .tabItem { Label("Plan", systemImage: "calendar") }

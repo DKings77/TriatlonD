@@ -18,7 +18,36 @@ enum Juego {
             suma += 0.3 * min(100, anoche / media * 100)
             peso += 0.3
         }
-        return peso > 0 ? (suma / peso).rounded() : nil
+        guard peso > 0 else { return nil }
+        var energia = suma / peso
+        // La carga acumulada por encima de tu fondo también cansa.
+        if let r = e.carga.relacion {
+            if r > 1.5 { energia -= 25 } else if r > 1.3 { energia -= 15 }
+        }
+        return max(0, min(100, energia)).rounded()
+    }
+
+    /// Modo Baja: varias señales de fatiga a la vez durante varios días.
+    /// Devuelve los motivos, o nada si estás bien.
+    static func modoBaja(_ e: EstadoDia, historico h: Historico?) -> [String]? {
+        var motivos: [String] = []
+        if let h {
+            let noches = h.vfc.suffix(3)
+            if noches.count == 3, noches.allSatisfy({ n in n.media.map { n.anoche < $0 * 0.9 } ?? false }) {
+                motivos.append("Tu VFC lleva tres noches más de un 10 % por debajo de su media.")
+            }
+            let sueno = h.sueno.suffix(4)
+            if sueno.count == 4, sueno.filter({ $0.horas < 6 }).count >= 3 {
+                motivos.append("Tres de las últimas cuatro noches has dormido menos de 6 h.")
+            }
+            if let reposo = h.pulsoReposo, let media = h.pulsoReposo7, reposo >= media + 5 {
+                motivos.append("Pulso en reposo \(Int(reposo)) ppm, 5 o más por encima de tu media de \(Int(media)).")
+            }
+        }
+        if let r = e.carga.relacion, r > 1.5 {
+            motivos.append("Tu carga de la semana es más de 1,5 veces tu fondo.")
+        }
+        return motivos.count >= 2 ? motivos : nil
     }
 
     /// Texto llano para la relación entre carga aguda y crónica.
