@@ -85,7 +85,7 @@ struct BaseView: View {
                     TarjetaModoBaja(motivos: motivos)
                 }
 
-                EscenaCorredor(energia: Juego.energia(estado) ?? 50, notaSueno: estado.sueno.puntuacion)
+                EscenaPersonaje(deporte: deporteDeHoy, energia: Juego.energia(estado) ?? 50, notaSueno: estado.sueno.puntuacion)
 
                 Tarjeta {
                     HStack(spacing: 16) {
@@ -123,6 +123,16 @@ struct BaseView: View {
         .sheet(isPresented: $ajustesVisibles) {
             AjustesView(almacen: almacen, plan: plan)
         }
+    }
+
+    /// Lo que toca hoy: la primera sesión pendiente, si no la primera de hoy; nada = descanso.
+    private var deporteDeHoy: Deporte? {
+        let hoy = Calendario.texto(Date())
+        let cruce = Analisis.cumplimiento(plan: plan.sesiones, hechas: almacen.historico?.sesiones ?? [], hoy: hoy)
+            .filter { $0.sesion.fecha == hoy }
+        // La fuerza va antes que el resto el mismo día, pero el personaje enseña el deporte principal.
+        let principal = cruce.filter { $0.sesion.deporte != .fuerza }
+        return (principal.first { $0.estado == .pendiente } ?? principal.first ?? cruce.first)?.sesion.deporte
     }
 
     private var fraseEnergia: String {
