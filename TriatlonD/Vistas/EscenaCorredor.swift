@@ -20,7 +20,7 @@ struct EscenaCorredor: View {
     private static let fotogramas: [UIImage] = (1...12).compactMap { UIImage(named: "corredor_\($0)") }
 
     var body: some View {
-        if EscenaCorredor.fotogramas.count >= 2 {
+        if EscenaCorredor.fotogramas.count >= 6 {
             ilustrado
         } else {
             dibujado
