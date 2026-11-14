@@ -23,7 +23,7 @@ struct PestanasView: View {
 
     var body: some View {
         TabView {
-            BaseView(almacen: almacen)
+            BaseView(almacen: almacen, plan: plan)
                 .tabItem { Label("Base", systemImage: "flame") }
             TravesiaView()
                 .tabItem { Label("Travesía", systemImage: "map") }
@@ -31,7 +31,7 @@ struct PestanasView: View {
                 .tabItem { Label("Plan", systemImage: "calendar") }
             LesionView()
                 .tabItem { Label("Lesión", systemImage: "bandage") }
-            FichaView(almacen: almacen)
+            FichaView(almacen: almacen, plan: plan)
                 .tabItem { Label("Datos", systemImage: "chart.xyaxis.line") }
         }
         .tint(Tema.turquesa)

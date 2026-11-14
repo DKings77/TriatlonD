@@ -20,5 +20,5 @@ Igual que MotoTestA2: no hace falta Mac.
 
 ## Estado
 
-Versión 0.7: plan editable sincronizado con intervals.icu, personaje corriendo animado y gráficas de carga, sueño, pulso y volumen con sus cruces. Lee sueño, VFC, peso y actividades de la API personal de Garmin si pegas tu clave en Ajustes; si no, usa datos de ejemplo.
+Versión 0.9: plan editable sincronizado con intervals.icu, personaje animado y pestaña Datos con plan frente a hecho, nivel, constancia, forma, zonas, eficiencia, curva de potencia, carrera, natación, recuperación y peso. Lee sueño, VFC, peso y actividades de la API personal de Garmin si pegas tu clave en Ajustes; si no, usa datos de ejemplo.
 En el repositorio no hay claves ni datos personales: las claves se guardan en el llavero del iPhone.

@@ -1,15 +1,26 @@
 // FichaView.swift
 // ------------------------------------------------------------------
-// Datos: el medidor de carga, las gráficas de las últimas
-// semanas (carga, sueño, pulso y volumen) y los cruces entre ellas.
+// Datos, en cuatro secciones: resumen (cruces, plan frente a hecho y
+// constancia), carga, rendimiento y cuerpo.
 // Todo se dibuja animado al entrar.
 // ------------------------------------------------------------------
 
 import SwiftUI
 import Charts
 
+enum SeccionDatos: String, CaseIterable, Identifiable {
+    case resumen = "Resumen"
+    case carga = "Carga"
+    case rendimiento = "Rinde"
+    case cuerpo = "Cuerpo"
+
+    var id: String { rawValue }
+}
+
 struct FichaView: View {
     let almacen: AlmacenEstado
+    let plan: AlmacenPlan
+    @State private var seccion = SeccionDatos.resumen
 
     private var estado: EstadoDia { almacen.estado }
 
@@ -19,52 +30,104 @@ struct FichaView: View {
                 Text("Datos")
                     .font(.largeTitle.bold())
 
-                MedidorCarga(carga: estado.carga)
-
-                HStack(spacing: 10) {
-                    Metrica(titulo: "Sueño", valor: estado.sueno.horas.map { String(format: "%.1f h", $0) })
-                    Metrica(titulo: "Pulso (VFC)", valor: estado.vfc.mediaSemanalMs.map { "\(Int($0)) ms" })
-                    Metrica(titulo: "Peso", valor: estado.pesoKg.map { String(format: "%.1f kg", $0) })
+                Picker("Sección", selection: $seccion) {
+                    ForEach(SeccionDatos.allCases) { s in
+                        Text(s.rawValue).tag(s)
+                    }
                 }
+                .pickerStyle(.segmented)
 
                 if let historico = almacen.historico {
-                    let lecturas = Lecturas.todas(historico)
-                    if !lecturas.isEmpty {
-                        Tarjeta {
-                            Label("Lo que cuentan tus datos", systemImage: "sparkles")
-                                .font(.headline)
-                            ForEach(lecturas, id: \.self) { frase in
-                                Text(frase)
-                                    .font(.subheadline)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                    GraficaCarga(dias: historico.carga)
-                    GraficaSueno(noches: historico.sueno)
-                    GraficaVFC(noches: historico.vfc)
-                    GraficaVolumen(semanas: historico.volumen)
-                } else if almacen.cargando {
-                    Tarjeta {
-                        HStack(spacing: 10) {
-                            ProgressView()
-                            Text("Trayendo cuatro semanas de datos de Garmin…")
-                                .font(.subheadline)
-                        }
+                    switch seccion {
+                    case .resumen: resumen(historico)
+                    case .carga: carga(historico)
+                    case .rendimiento: rendimiento(historico)
+                    case .cuerpo: cuerpo(historico)
                     }
                 } else {
+                    MedidorCarga(carga: estado.carga)
                     Tarjeta {
-                        Text("Las gráficas aparecen con datos reales. Añade tu clave de Garmin en Ajustes, desde el engranaje de Base.")
-                            .font(.subheadline)
-                            .foregroundStyle(Tema.textoSecundario)
+                        if almacen.cargando {
+                            HStack(spacing: 10) {
+                                ProgressView()
+                                Text("Trayendo tus datos de Garmin…")
+                                    .font(.subheadline)
+                            }
+                        } else {
+                            Text("Las gráficas aparecen con datos reales. Añade tu clave de Garmin en Ajustes, desde el engranaje de Base.")
+                                .font(.subheadline)
+                                .foregroundStyle(Tema.textoSecundario)
+                        }
                     }
                 }
             }
             .padding(20)
+            .animation(.easeInOut(duration: 0.25), value: seccion)
         }
         .background(Tema.fondo)
         .foregroundStyle(Tema.texto)
         .refreshable { await almacen.recargar() }
+    }
+
+    @ViewBuilder
+    private func resumen(_ h: Historico) -> some View {
+        let lecturas = Lecturas.todas(h)
+        if !lecturas.isEmpty {
+            Tarjeta {
+                Label("Lo que cuentan tus datos", systemImage: "sparkles")
+                    .font(.headline)
+                ForEach(lecturas, id: \.self) { frase in
+                    Text(frase)
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        TarjetaCumplimiento(lista: Analisis.cumplimiento(plan: plan.sesiones, hechas: h.sesiones, hoy: Calendario.texto(Date())))
+        TarjetaConstancia(constancia: Analisis.constancia(h.sesiones, hoy: Date()))
+    }
+
+    @ViewBuilder
+    private func carga(_ h: Historico) -> some View {
+        MedidorCarga(carga: estado.carga)
+        if let fr = h.formaYRampa {
+            TarjetaForma(forma: fr.forma, rampa: fr.rampa)
+        }
+        GraficaCarga(dias: h.carga)
+        if !h.zonas.isEmpty {
+            GraficaZonas(zonas: h.zonas)
+        }
+        GraficaVolumen(semanas: h.volumen)
+    }
+
+    @ViewBuilder
+    private func rendimiento(_ h: Historico) -> some View {
+        if !h.eficiencia.isEmpty {
+            GraficaEficiencia(puntos: h.eficiencia)
+        }
+        if !h.potencia.isEmpty {
+            GraficaPotencia(marcas: h.potencia, ftpEstimado: h.ftpEstimado)
+        }
+        let carreras = Array(h.sesiones.filter { $0.deporte == "Carrera" }.suffix(6).reversed())
+        if !carreras.isEmpty {
+            TarjetaCarreras(carreras: carreras)
+        }
+        if h.natacion.count >= 2 {
+            GraficaNatacion(sesiones: h.natacion)
+        }
+    }
+
+    @ViewBuilder
+    private func cuerpo(_ h: Historico) -> some View {
+        HStack(spacing: 10) {
+            Metrica(titulo: "Sueño", valor: estado.sueno.horas.map { String(format: "%.1f h", $0) })
+            Metrica(titulo: "Pulso (VFC)", valor: estado.vfc.mediaSemanalMs.map { "\(Int($0)) ms" })
+            Metrica(titulo: "Peso", valor: estado.pesoKg.map { String(format: "%.1f kg", $0) })
+        }
+        GraficaSueno(noches: h.sueno)
+        GraficaVFC(noches: h.vfc)
+        TarjetaRecuperacion(historico: h)
+        GraficaPeso(dias: h.peso)
     }
 }
 

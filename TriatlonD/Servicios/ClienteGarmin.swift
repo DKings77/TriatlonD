@@ -183,6 +183,8 @@ final class ClienteGarmin {
         let lista = (try? await json("/activitylist-service/activities/search/activities?start=0&limit=100") as? [[String: Any]]) ?? []
         var cargaPorDia: [Int: Double] = [:]          // días atrás -> carga
         var horasPorSemana: [String: Double] = [:]    // "semanasAtrás|deporte" -> horas
+        var zonaPorSemana: [String: Double] = [:]     // "semanasAtrás|zona" -> horas
+        var mejores: [String: Double] = [:]           // "duración|periodo" -> vatios
         let diaSemanaHoy = (calendario.component(.weekday, from: hoy) + 5) % 7   // lunes = 0
         for a in lista {
             guard let inicio = a["startTimeLocal"] as? String,
@@ -190,13 +192,66 @@ final class ClienteGarmin {
             let atras = calendario.dateComponents([.day], from: dia, to: hoy).day ?? 999
             guard atras >= 0, atras < 60 else { continue }
             if let valor = cargaDe(a) { cargaPorDia[atras, default: 0] += valor }
-            if let deporte = deporteDe(a), let segundos = numero(a["duration"]) {
-                let semanasAtras = (atras + (6 - diaSemanaHoy)) / 7
-                if semanasAtras < 4 {
-                    horasPorSemana["\(semanasAtras)|\(deporte)", default: 0] += segundos / 3600
+            let deporte = deporteDe(a)
+            let segundos = numero(a["duration"]) ?? 0
+            let minutos = segundos / 60
+            let metros = numero(a["distance"])
+            let pulso = numero(a["averageHR"])
+            let potencia = numero(a["avgPower"])
+            let semanasAtras = (atras + (6 - diaSemanaHoy)) / 7
+
+            resultado.sesiones.append(SesionHecha(
+                id: numero(a["activityId"]).map { Int($0) } ?? resultado.sesiones.count,
+                dia: String(inicio.prefix(10)), fecha: dia, deporte: deporte,
+                nombre: a["activityName"] as? String ?? "Sesión",
+                minutos: minutos, metros: metros, pulso: pulso, potencia: potencia))
+
+            if let deporte, semanasAtras < 4 {
+                horasPorSemana["\(semanasAtras)|\(deporte)", default: 0] += segundos / 3600
+            }
+            if semanasAtras < 4 {
+                for zona in 1...5 {
+                    if let enZona = numero(a["hrTimeInZone_\(zona)"]), enZona > 0 {
+                        zonaPorSemana["\(semanasAtras)|\(zona)", default: 0] += enZona / 3600
+                    }
+                }
+            }
+            // Eficiencia aeróbica: cuánto rindes por cada pulsación.
+            if let pulso, pulso > 60 {
+                if deporte == "Bici", let potencia, potencia > 40, minutos >= 30 {
+                    resultado.eficiencia.append(PuntoSerie(fecha: dia, serie: "Bici: vatios por pulsación", valor: potencia / pulso))
+                }
+                if deporte == "Carrera", let metros, metros > 0, minutos >= 15 {
+                    resultado.eficiencia.append(PuntoSerie(fecha: dia, serie: "Carrera: metros por minuto y pulsación", valor: (metros / minutos) / pulso))
+                }
+            }
+            if deporte == "Agua", let metros, metros > 0, segundos > 0 {
+                resultado.natacion.append(DiaValor(fecha: dia, valor: segundos / (metros / 100)))
+            }
+            // Mejores vatios sostenidos, este mes y el anterior.
+            let periodo = atras < 28 ? "Últimos 28 días" : (atras < 56 ? "28 días anteriores" : nil)
+            if let periodo {
+                for (campo, etiqueta) in [("maxAvgPower_5", "5 s"), ("maxAvgPower_60", "1 min"), ("maxAvgPower_300", "5 min"), ("maxAvgPower_1200", "20 min")] {
+                    if let vatios = numero(a[campo]), vatios > (mejores["\(etiqueta)|\(periodo)"] ?? 0) {
+                        mejores["\(etiqueta)|\(periodo)"] = vatios
+                    }
+                }
+                if let veinte = numero(a["max20MinPower"]), veinte > (mejores["20 min|\(periodo)"] ?? 0) {
+                    mejores["20 min|\(periodo)"] = veinte
                 }
             }
         }
+        resultado.sesiones.sort { $0.fecha < $1.fecha }
+        resultado.eficiencia.sort { $0.fecha < $1.fecha }
+        resultado.natacion.sort { $0.fecha < $1.fecha }
+        for etiqueta in ["5 s", "1 min", "5 min", "20 min"] {
+            for periodo in ["28 días anteriores", "Últimos 28 días"] {
+                if let vatios = mejores["\(etiqueta)|\(periodo)"] {
+                    resultado.potencia.append(MarcaPotencia(duracion: etiqueta, periodo: periodo, vatios: vatios))
+                }
+            }
+        }
+        if let veinte = mejores["20 min|Últimos 28 días"] { resultado.ftpEstimado = (veinte * 0.95).rounded() }
         for atras in stride(from: 27, through: 0, by: -1) {
             var aguda = 0.0
             var total28 = 0.0
@@ -216,6 +271,11 @@ final class ClienteGarmin {
                 let horas = horasPorSemana["\(semanasAtras)|\(deporte)"] ?? 0
                 resultado.volumen.append(VolumenSemana(inicio: inicio, deporte: deporte, horas: horas))
             }
+            for zona in 1...5 {
+                if let horas = zonaPorSemana["\(semanasAtras)|\(zona)"] {
+                    resultado.zonas.append(TiempoZona(semana: inicio, zona: "Z\(zona)", horas: horas))
+                }
+            }
         }
 
         // --- VFC de 28 días
@@ -228,6 +288,33 @@ final class ClienteGarmin {
                 resultado.vfc.append(NocheVFC(fecha: fecha, anoche: anoche, media: numero(n["weeklyAvg"])))
             }
             resultado.vfc.sort { $0.fecha < $1.fecha }
+        }
+
+        // --- Peso de 60 días
+        let hace60 = Self.fecha(hoy.addingTimeInterval(-59 * 86400))
+        if let peso = try? await json("/weight-service/weight/range/\(hace60)/\(hoyTexto)") as? [String: Any],
+           let dias = peso["dailyWeightSummaries"] as? [[String: Any]] {
+            for d in dias {
+                guard let texto = d["summaryDate"] as? String, let fecha = Self.formatoDia.date(from: texto) else { continue }
+                let gramos = numero((d["latestWeight"] as? [String: Any])?["weight"]) ?? numero(d["maxWeight"]) ?? numero(d["minWeight"])
+                if let gramos, gramos > 0 { resultado.peso.append(DiaValor(fecha: fecha, valor: gramos / 1000)) }
+            }
+            resultado.peso.sort { $0.fecha < $1.fecha }
+        }
+
+        // --- Body Battery de 14 días y pulso en reposo
+        let hace14 = Self.fecha(hoy.addingTimeInterval(-13 * 86400))
+        if let bateria = try? await json("/wellness-service/wellness/bodyBattery/reports/daily?startDate=\(hace14)&endDate=\(hoyTexto)") as? [[String: Any]] {
+            for d in bateria {
+                guard let texto = d["date"] as? String, let fecha = Self.formatoDia.date(from: texto),
+                      let cargada = numero(d["charged"]) else { continue }
+                resultado.bateria.append(DiaValor(fecha: fecha, valor: cargada))
+            }
+            resultado.bateria.sort { $0.fecha < $1.fecha }
+        }
+        if let resumen = try? await json("/usersummary-service/usersummary/daily?calendarDate=\(hoyTexto)") as? [String: Any] {
+            resultado.pulsoReposo = numero(resumen["restingHeartRate"])
+            resultado.pulsoReposo7 = numero(resumen["lastSevenDaysAvgRestingHeartRate"])
         }
 
         // --- Sueño de 14 noches, en paralelo

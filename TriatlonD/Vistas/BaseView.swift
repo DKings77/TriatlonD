@@ -8,6 +8,7 @@ import SwiftUI
 
 struct BaseView: View {
     let almacen: AlmacenEstado
+    let plan: AlmacenPlan
     @State private var ajustesVisibles = false
 
     private var estado: EstadoDia { almacen.estado }
@@ -92,6 +93,26 @@ struct BaseView: View {
                                 .font(.footnote)
                                 .foregroundStyle(Tema.textoSecundario)
                         }
+                    }
+                }
+
+                if let historico = almacen.historico {
+                    let lista = Analisis.cumplimiento(plan: plan.sesiones, hechas: historico.sesiones, hoy: Calendario.texto(Date()))
+                    let nivel = Analisis.nivel(puntos: Analisis.puntos(lista))
+                    Tarjeta {
+                        HStack {
+                            Text("Nivel \(nivel.numero)")
+                                .font(.title3.bold())
+                                .foregroundStyle(Tema.experiencia)
+                            Spacer()
+                            Text("\(nivel.dentro) / \(nivel.necesario) puntos")
+                                .font(.subheadline)
+                                .foregroundStyle(Tema.textoSecundario)
+                        }
+                        BarraProgreso(valor: Double(nivel.dentro) / Double(nivel.necesario) * 100, color: Tema.experiencia)
+                        Text("Cada sesión del plan que cumples suma puntos. El detalle está en Datos.")
+                            .font(.footnote)
+                            .foregroundStyle(Tema.textoSecundario)
                     }
                 }
 
