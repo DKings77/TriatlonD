@@ -35,50 +35,25 @@ struct EscenaPersonaje: View {
 
     private var color: Color { deporte?.color ?? Tema.natacion.opacity(0.6) }
 
+    /// Ilustración fija sobre un fondo suave del color del deporte.
     private func ilustrada(_ imagen: UIImage) -> some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { linea in
-            let t = linea.date.timeIntervalSinceReferenceDate
-            let ritmo = deporte == nil ? 0.15 : 0.4 + energia / 100 * 1.4
-            ZStack {
-                LinearGradient(colors: [color.opacity(0.55), Tema.superficie, Tema.fondo],
-                               startPoint: .top, endPoint: .bottom)
-                Canvas { c, tam in
-                    // Luces que flotan
-                    for i in 0..<14 {
-                        let semilla = Double(i) * 37.7
-                        let x = (semilla.truncatingRemainder(dividingBy: 1) + Double(i) / 14) * tam.width
-                        let y = (0.15 + (Double(i * 7 % 10) / 10) * 0.6) * tam.height
-                        let r = 4 + Double(i % 4) * 5
-                        let desplaza = (t * ritmo * 18 + semilla).truncatingRemainder(dividingBy: tam.width + 40)
-                        let px = (x - desplaza).truncatingRemainder(dividingBy: tam.width + 40)
-                        let rect = CGRect(x: px < -20 ? px + tam.width + 40 : px, y: y + sin(t + semilla) * 6, width: r, height: r)
-                        c.fill(Path(ellipseIn: rect), with: .color(.white.opacity(0.05 + Double(i % 3) * 0.04)))
-                    }
-                    // Líneas de velocidad (no en descanso)
-                    if deporte != nil {
-                        for i in 0..<6 {
-                            let y = tam.height * (0.3 + Double(i) * 0.09)
-                            let largo = 40 + Double(i % 3) * 30
-                            let x = tam.width - (t * ritmo * 260 + Double(i) * 97).truncatingRemainder(dividingBy: tam.width + largo)
-                            var p = Path()
-                            p.move(to: CGPoint(x: x, y: y))
-                            p.addLine(to: CGPoint(x: x + largo, y: y))
-                            c.stroke(p, with: .color(.white.opacity(0.10 + energia / 100 * 0.15)), lineWidth: 2)
-                        }
-                    }
-                }
-                Image(uiImage: imagen)
-                    .resizable()
-                    .scaledToFit()
-                    .padding(.horizontal, 10)
-                    .padding(.top, 12)
-                    .scaleEffect(1 + sin(t * (deporte == nil ? 0.8 : 2.2 * ritmo)) * 0.012)
-                    .offset(y: CGFloat(sin(t * 3.2 * ritmo)) * (deporte == nil ? 1 : 3))
-                    .shadow(color: color.opacity(0.5), radius: 18)
-                    .saturation(energia < 35 ? 0.75 : 1)
-            }
+        ZStack(alignment: .bottom) {
+            LinearGradient(colors: [color.opacity(0.45), Tema.superficie],
+                           startPoint: .top, endPoint: .bottom)
+            Ellipse()
+                .fill(Color.black.opacity(0.25))
+                .frame(height: 14)
+                .padding(.horizontal, 30)
+                .padding(.bottom, 8)
+            Image(uiImage: imagen)
+                .resizable()
+                .scaledToFit()
+                .padding(.horizontal, 6)
+                .padding(.top, 10)
+                .padding(.bottom, 6)
+                .saturation(energia < 35 ? 0.75 : 1)
         }
-        .aspectRatio(350.0 / 400.0, contentMode: .fit)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .accessibilityLabel(deporte.map { "Tu personaje: hoy toca \($0.rawValue.lowercased())" } ?? "Tu personaje descansando")
     }

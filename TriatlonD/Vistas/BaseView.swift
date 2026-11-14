@@ -85,25 +85,13 @@ struct BaseView: View {
                     TarjetaModoBaja(motivos: motivos)
                 }
 
-                EscenaPersonaje(deporte: deporteDeHoy, energia: Juego.energia(estado) ?? 50, notaSueno: estado.sueno.puntuacion)
-
-                Tarjeta {
-                    HStack(spacing: 16) {
-                        AnilloProgreso(valor: Juego.energia(estado) ?? 0, color: Tema.turquesa, etiqueta: "Energía")
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(fraseEnergia)
-                                .font(.headline)
-                            Text("Tu personaje corre más ligero cuanta más energía tienes. Sale de tu sueño y tu variabilidad del pulso.")
-                                .font(.footnote)
-                                .foregroundStyle(Tema.textoSecundario)
-                            if Juego.modoBaja(estado, historico: almacen.historico) == nil {
-                                Label("Modo Baja: no activo", systemImage: "battery.100")
-                                    .font(.caption.bold())
-                                    .foregroundStyle(Tema.carrera)
-                            }
-                        }
-                    }
+                HStack(alignment: .top, spacing: 12) {
+                    EscenaPersonaje(deporte: deporteDeHoy, energia: Juego.energia(estado) ?? 50, notaSueno: estado.sueno.puntuacion)
+                        .frame(maxWidth: .infinity)
+                    PanelEnergia(estado: estado, historico: almacen.historico, frase: fraseEnergia)
+                        .frame(maxWidth: .infinity)
                 }
+                .frame(height: 250)
 
                 TarjetaHoyToca(plan: plan, almacen: almacen)
 
@@ -248,4 +236,90 @@ struct TarjetaHoyToca: View {
         case .fuerza: return "dumbbell.fill"
         }
     }
+}
+
+/// Al lado del personaje: la energía como una batería de cinco niveles
+/// y lo que la explica (sueño, VFC y carga).
+struct PanelEnergia: View {
+    let estado: EstadoDia
+    let historico: Historico?
+    let frase: String
+    @State private var visible = false
+
+    private var energia: Double { Juego.energia(estado) ?? 0 }
+    private var nivel: Int { Int((energia / 20).rounded(.up)).clamped(0, 5) }
+    private var color: Color {
+        switch nivel {
+        case 5, 4: return Tema.carrera
+        case 3: return Tema.turquesa
+        case 2: return Tema.experiencia
+        default: return Tema.alerta
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Energía")
+                .font(.caption)
+                .foregroundStyle(Tema.textoSecundario)
+            HStack(alignment: .bottom, spacing: 10) {
+                // Batería de cinco segmentos
+                VStack(spacing: 3) {
+                    RoundedRectangle(cornerRadius: 2).fill(Tema.pista).frame(width: 16, height: 4)
+                    ForEach((1...5).reversed(), id: \.self) { n in
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(n <= nivel && visible ? color : Tema.pista)
+                            .frame(width: 34, height: 15)
+                            .animation(.spring(duration: 0.4).delay(Double(5 - n) * 0.08), value: visible)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("\(Int(energia))")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundStyle(color)
+                    Text("Nivel \(nivel) de 5")
+                        .font(.caption2.bold())
+                        .foregroundStyle(Tema.textoSecundario)
+                }
+            }
+            Text(frase)
+                .font(.subheadline.bold())
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 3) {
+                fila("moon.zzz.fill", estado.sueno.horas.map { String(format: "%.1f h", $0) } ?? "–")
+                fila("waveform.path.ecg", estado.vfc.anocheMs.map { "\(Int($0)) ms" } ?? "–")
+                fila("gauge.with.dots.needle.50percent", estado.carga.relacion.map { String(format: "carga %.1f", $0) } ?? "–")
+            }
+            Spacer(minLength: 0)
+            if Juego.modoBaja(estado, historico: historico) == nil {
+                Label("Sin Modo Baja", systemImage: "checkmark.circle.fill")
+                    .font(.caption2.bold())
+                    .foregroundStyle(Tema.carrera)
+            } else {
+                Label("Modo Baja", systemImage: "battery.25")
+                    .font(.caption2.bold())
+                    .foregroundStyle(Tema.alerta)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Tema.superficie)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .onAppear { visible = true }
+    }
+
+    private func fila(_ icono: String, _ texto: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icono)
+                .font(.caption2)
+                .foregroundStyle(Tema.textoSecundario)
+                .frame(width: 14)
+            Text(texto)
+                .font(.caption)
+        }
+    }
+}
+
+private extension Int {
+    func clamped(_ a: Int, _ b: Int) -> Int { Swift.min(Swift.max(self, a), b) }
 }
