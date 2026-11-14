@@ -93,7 +93,7 @@ final class ClienteClaude {
 
 /// Lo que Claude necesita saber: las reglas fijas y el estado de hoy.
 enum ContextoIA {
-    static let reglas = """
+    static var reglas: String { """
     Eres el entrenador de David, triatleta aficionado de Mataró que vuelve tras una lesión \
     (fascitis plantar y tendinitis del tendón de Aquiles). Objetivo: recuperar base aeróbica en bici \
     y natación, volver a correr sin dolor y bajar de peso. La constancia pesa más que el volumen.
@@ -119,7 +119,8 @@ enum ContextoIA {
     relación por encima de 1,3) y dilo. Cada cuatro semanas, una de descarga. En bici puede haber \
     un día con bloques de tempo o sweet spot (76-92 % del FTP); el resto, Z2 (65-75 %).
 
-    REFERENCIAS: FTP 200 W. Zonas de pulso: Z1 108-135, Z2 136-150, Z3 151-159, Z4 160-170, Z5 171-187 ppm.
+    REFERENCIAS: FTP \(Int(Referencias.ftp)) W. Zonas de pulso: \((1...5).map { "Z\($0) \(Referencias.zonasPulso[$0] ?? "")" }.joined(separator: ", ")).
+    OBJETIVO DE PESO: \(String(format: "%.0f", Referencias.pesoObjetivo)) kg para el \(Referencias.fechaObjetivo), bajando de forma sostenible.
 
     NOMBRE DE CADA SESIÓN, obligatorio: "S<semana> D<día 1-7>: <letra><orden> <duración> <zona> [1/2 o 2/2] | <estructura>".
     - Letra: B bici, C carrera, N natación, F fuerza. El orden cuenta las sesiones de ese deporte en la semana (B1, B2, B3).
@@ -155,7 +156,7 @@ enum ContextoIA {
     {"explicacion": "tres o cuatro frases en español, claras y directas: qué has visto en los datos y qué cambia esta semana",
      "sesiones": [{"fecha": "aaaa-mm-dd", "tipo": "Ride|Run|Swim|WeightTraining", "nombre": "...", "pasos": "..."}]}
     No inventes datos que no estén en el contexto.
-    """
+    """ }
 
     static func texto(lunes: Date, estado: EstadoDia, esReal: Bool, historico: Historico?,
                       plan: [SesionPlan], dolor: Int) -> String {
@@ -176,11 +177,14 @@ enum ContextoIA {
         dato("Sueño de anoche", estado.sueno.horas, " h")
         dato("Nota de sueño", estado.sueno.puntuacion)
         dato("Peso", estado.pesoKg, " kg")
-        if dolor >= 0 {
-            lineas.append("- Dolor en la última carrera: \(dolor) sobre 10")
+        let diario = DiarioDolor.registros.suffix(6)
+        if diario.isEmpty {
+            lineas.append(dolor >= 0 ? "- Dolor en la última carrera: \(dolor) sobre 10" : "- Dolor en las carreras: sin registrar")
         } else {
-            lineas.append("- Dolor en la última carrera: sin registrar")
+            lineas.append("- Dolor en las últimas carreras (0-10): " + diario.map { "\($0.dia) \($0.valor)" }.joined(separator: ", "))
         }
+        let escalera = Escalera.calcular(plan: plan, hechas: historico?.sesiones ?? [])
+        lineas.append("- Escalera de carrera: peldaño actual \(escalera.actual)' (\(escalera.validas) de 2 carreras válidas)")
 
         if let h = historico {
             if let forma = h.formaYRampa {

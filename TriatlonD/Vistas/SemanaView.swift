@@ -49,13 +49,19 @@ struct SemanaView: View {
                     }
                 }
 
-                ForEach(plan.ordenadas) { sesion in
-                    Button {
-                        elegida = sesion
-                    } label: {
-                        FilaSesion(sesion: sesion)
+                let media = Totales.mediaReciente(almacen.historico)
+                ForEach(Totales.porSemana(plan.sesiones), id: \.semana) { total in
+                    CabeceraSemana(total: total, media: media)
+                    ForEach(plan.ordenadas.filter { sesion in
+                        Calendario.fecha(sesion.fecha).map(Calendario.semanaTemporada) == total.semana
+                    }) { sesion in
+                        Button {
+                            elegida = sesion
+                        } label: {
+                            FilaSesion(sesion: sesion)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
 
                 Button {

@@ -408,6 +408,7 @@ struct GraficaPeso: View {
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                 Text("Con tu FTP de \(Int(Referencias.ftp)) W son \(String(format: "%.2f", Referencias.ftp / ultima.valor)) W/kg.")
                     .font(.footnote)
+                LineaObjetivoPeso(actual: ultima.valor)
                 Text("Solo hay \(dias.count == 1 ? "una pesada" : "dos pesadas") en Garmin en los últimos 60 días. Con tres o más aparece la gráfica con su tendencia.")
                     .font(.caption)
                     .foregroundStyle(Tema.textoSecundario)
@@ -422,11 +423,15 @@ struct GraficaPeso: View {
                             .foregroundStyle(Tema.experiencia)
                             .interpolationMethod(.monotone)
                     }
+                    RuleMark(y: .value("Objetivo", Referencias.pesoObjetivo))
+                        .foregroundStyle(Tema.carrera.opacity(0.7))
+                        .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
                 }
                 .chartYScale(domain: .automatic(includesZero: false))
                 .frame(height: 160)
                 .revelado(avance)
                 if let ultimo = tendencia.last {
+                    LineaObjetivoPeso(actual: ultimo.valor)
                     Text("Tendencia: \(String(format: "%.1f", ultimo.valor)) kg. Con tu FTP de \(Int(Referencias.ftp)) W son \(String(format: "%.2f", Referencias.ftp / ultimo.valor)) W/kg.")
                         .font(.footnote)
                 }
@@ -457,5 +462,37 @@ struct DatoSimple: View {
                 .font(.title3.bold())
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Cuánto falta hasta el peso objetivo y a qué ritmo semanal.
+struct LineaObjetivoPeso: View {
+    let actual: Double
+
+    var body: some View {
+        let objetivo = Referencias.pesoObjetivo
+        let falta = actual - objetivo
+        let fecha = Calendario.fecha(Referencias.fechaObjetivo) ?? Date()
+        let semanas = max(1, fecha.timeIntervalSinceNow / (7 * 86400))
+        let ritmo = falta / semanas * 1000
+        // Peso de partida: 88,4 kg en octubre de 2026.
+        let inicio = max(88.4, actual)
+        let progreso = max(0, min(1, (inicio - actual) / max(inicio - objetivo, 0.1)))
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Objetivo \(String(format: "%.0f", objetivo)) kg")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(Tema.carrera)
+                Spacer()
+                Text(falta > 0 ? "faltan \(String(format: "%.1f", falta)) kg" : "¡conseguido!")
+                    .font(.subheadline.bold())
+            }
+            BarraProgreso(valor: progreso * 100, color: Tema.carrera)
+            if falta > 0 {
+                Text("Para llegar el \(fecha.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "es_ES")))): unos \(Int(ritmo.rounded())) g por semana durante \(Int(semanas)) semanas. \(ritmo <= 500 ? "Es un ritmo sostenible." : "Es un ritmo exigente: más de medio kilo por semana.")")
+                    .font(.caption)
+                    .foregroundStyle(Tema.textoSecundario)
+            }
+        }
     }
 }

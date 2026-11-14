@@ -102,16 +102,53 @@ struct PasoLegible: Identifiable {
     let esCabecera: Bool
 }
 
-/// Tus referencias, iguales que en Garmin e intervals.icu.
+/// Tus referencias. Se cambian en Ajustes; si no se han tocado, valen
+/// lo mismo que en Garmin e intervals.icu (FTP 200 W, zonas 108/136/151/160/171, máx. 187).
 enum Referencias {
-    static let ftp = 200.0
-    static let zonasPulso: [Int: String] = [
-        1: "108-135 ppm",
-        2: "136-150 ppm",
-        3: "151-159 ppm",
-        4: "160-170 ppm",
-        5: "171-187 ppm"
-    ]
+    private static let ajustes = UserDefaults.standard
+    private static let suelosPorDefecto = [108, 136, 151, 160, 171]
+
+    static var ftp: Double {
+        let valor = ajustes.double(forKey: "ref.ftp")
+        return valor > 0 ? valor : 200
+    }
+
+    static var pulsoMaximo: Int {
+        let valor = ajustes.integer(forKey: "ref.max")
+        return valor > 0 ? valor : 187
+    }
+
+    /// Pulso donde empieza cada zona, de Z1 a Z5.
+    static var suelos: [Int] {
+        (1...5).map { zona in
+            let valor = ajustes.integer(forKey: "ref.z\(zona)")
+            return valor > 0 ? valor : suelosPorDefecto[zona - 1]
+        }
+    }
+
+    static func rango(zona: Int) -> (desde: Int, hasta: Int)? {
+        guard (1...5).contains(zona) else { return nil }
+        let s = suelos
+        return (s[zona - 1], zona < 5 ? s[zona] - 1 : pulsoMaximo)
+    }
+
+    static var zonasPulso: [Int: String] {
+        var resultado: [Int: String] = [:]
+        for zona in 1...5 {
+            if let r = rango(zona: zona) { resultado[zona] = "\(r.desde)-\(r.hasta) ppm" }
+        }
+        return resultado
+    }
+
+    static var pesoObjetivo: Double {
+        let valor = ajustes.double(forKey: "ref.pesoObjetivo")
+        return valor > 0 ? valor : 82
+    }
+
+    /// Fecha del objetivo de peso: el verano de 2027 por defecto.
+    static var fechaObjetivo: String {
+        ajustes.string(forKey: "ref.fechaPeso") ?? "2027-06-21"
+    }
 }
 
 enum Calendario {

@@ -116,6 +116,12 @@ struct BaseView: View {
                     }
                 }
 
+                if let historico = almacen.historico,
+                   let parte = Partes.ultimo(plan: plan.sesiones, hechas: historico.sesiones) {
+                    TarjetaParte(parte: parte)
+                        .id(parte.sesion.id)
+                }
+
                 Tarjeta {
                     Text("Últimas sesiones")
                         .font(.headline)

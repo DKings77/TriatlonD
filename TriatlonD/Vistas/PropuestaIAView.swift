@@ -115,6 +115,11 @@ struct PropuestaIAView: View {
                             }
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
+                        if let total = Totales.porSemana(propuesta.sesiones).first {
+                            Tarjeta {
+                                CabeceraSemana(total: total, media: Totales.mediaReciente(almacen.historico))
+                            }
+                        }
                         ForEach(propuesta.sesiones.sorted { ($0.fecha, $0.nombre) < ($1.fecha, $1.nombre) }) { sesion in
                             FilaPropuesta(sesion: sesion)
                                 .transition(.move(edge: .bottom).combined(with: .opacity))

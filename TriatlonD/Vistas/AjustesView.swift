@@ -13,12 +13,48 @@ struct AjustesView: View {
     @State private var hayClave = Llavero.leer("garminClave") != nil
     @State private var claveIntervals = ""
     @State private var hayIntervals = Llavero.leer("intervalsClave") != nil
+    @AppStorage("ref.ftp") private var ftp = 200.0
+    @AppStorage("ref.z1") private var z1 = 108
+    @AppStorage("ref.z2") private var z2 = 136
+    @AppStorage("ref.z3") private var z3 = 151
+    @AppStorage("ref.z4") private var z4 = 160
+    @AppStorage("ref.z5") private var z5 = 171
+    @AppStorage("ref.max") private var maximo = 187
+    @AppStorage("ref.pesoObjetivo") private var pesoObjetivo = 82.0
+    @AppStorage("ref.fechaPeso") private var fechaPeso = "2027-06-21"
     @State private var claveClaude = ""
     @State private var hayClaude = Llavero.leer("claudeClave") != nil
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Stepper("FTP: \(Int(ftp)) W", value: $ftp, in: 100...400, step: 1)
+                    Stepper("Empieza Z1: \(z1) ppm", value: $z1, in: 80...200)
+                    Stepper("Empieza Z2: \(z2) ppm", value: $z2, in: 80...200)
+                    Stepper("Empieza Z3: \(z3) ppm", value: $z3, in: 80...200)
+                    Stepper("Empieza Z4: \(z4) ppm", value: $z4, in: 80...200)
+                    Stepper("Empieza Z5: \(z5) ppm", value: $z5, in: 80...210)
+                    Stepper("Pulso máximo: \(maximo) ppm", value: $maximo, in: 150...220)
+                    Button("Volver a los valores de Garmin") {
+                        ftp = 200; z1 = 108; z2 = 136; z3 = 151; z4 = 160; z5 = 171; maximo = 187
+                    }
+                } header: {
+                    Text("Tus referencias")
+                } footer: {
+                    Text("Si cambias el FTP tras un test, cámbialo también en Garmin, Rouvy e intervals.icu (o pídemelo): los entrenos se envían en % del FTP y cada sitio usa el suyo.")
+                }
+
+                Section {
+                    Stepper(String(format: "Peso objetivo: %.1f kg", pesoObjetivo), value: $pesoObjetivo, in: 60...100, step: 0.5)
+                    DatePicker("Para el", selection: Binding(
+                        get: { Calendario.fecha(fechaPeso) ?? Date() },
+                        set: { fechaPeso = Calendario.texto($0) }
+                    ), in: Date()..., displayedComponents: .date)
+                } header: {
+                    Text("Objetivo de peso")
+                }
+
                 Section {
                     SecureField("Clave personal de Garmin", text: $claveGarmin)
                         .textInputAutocapitalization(.never)
