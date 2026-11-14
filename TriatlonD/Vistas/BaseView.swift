@@ -104,6 +104,8 @@ struct BaseView: View {
                     TarjetaNota(nota: Nota.calcular(historico: historico, pesoKg: estado.pesoKg))
                 }
 
+                TarjetaLogros(logros: Logros.calcular(plan: plan.sesiones, historico: almacen.historico, pesoKg: estado.pesoKg))
+
                 if let historico = almacen.historico,
                    let parte = Partes.ultimo(plan: plan.sesiones, hechas: historico.sesiones) {
                     TarjetaParte(parte: parte)

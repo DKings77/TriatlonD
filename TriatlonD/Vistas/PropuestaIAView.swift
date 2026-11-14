@@ -10,7 +10,9 @@ import SwiftUI
 struct PropuestaIAView: View {
     let plan: AlmacenPlan
     let almacen: AlmacenEstado
+    var revision = false
     @Environment(\.dismiss) private var cerrar
+    @State private var gastoUltimo: Double?
     @AppStorage("dolorUltimaCarrera") private var dolor = -1
 
     @State private var lunes = PropuestaIAView.lunesPorDefecto()
@@ -38,8 +40,12 @@ struct PropuestaIAView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    if revision {
+                        ResumenSemanaPasada(lunes: lunes.addingTimeInterval(-7 * 86400), plan: plan.sesiones,
+                                            historico: almacen.historico)
+                    }
                     Tarjeta {
-                        Text("Semana S\(Calendario.semanaTemporada(lunes))")
+                        Text(revision ? "Y la siguiente: S\(Calendario.semanaTemporada(lunes))" : "Semana S\(Calendario.semanaTemporada(lunes))")
                             .font(.title2.bold())
                         Text("Del \(Calendario.etiqueta(Calendario.texto(lunes))) al \(Calendario.etiqueta(Calendario.texto(lunes.addingTimeInterval(6 * 86400))))")
                             .font(.subheadline)
@@ -89,7 +95,7 @@ struct PropuestaIAView: View {
                         HStack(spacing: 10) {
                             Image(systemName: "sparkles")
                                 .rotationEffect(.degrees(giro))
-                            Text(pensando ? "Pensando la semana…" : (propuesta == nil ? "Proponer semana" : "Proponer otra"))
+                            Text(pensando ? "Pensando la semana…" : (propuesta == nil ? (revision ? "Revisar y proponer" : "Proponer semana") : "Proponer otra"))
                         }
                         .font(.headline)
                         .frame(maxWidth: .infinity, minHeight: 50)
@@ -98,6 +104,10 @@ struct PropuestaIAView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     .disabled(pensando)
+
+                    Text("Cada petición gasta unos céntimos. \(gastoUltimo.map { "La última: \(Gasto.texto($0)). " } ?? "")Este mes: \(Gasto.texto(Gasto.esteMes)).")
+                        .font(.caption)
+                        .foregroundStyle(Tema.textoSecundario)
 
                     if let fallo {
                         Text(fallo)
@@ -108,7 +118,7 @@ struct PropuestaIAView: View {
                     if let propuesta {
                         if !propuesta.explicacion.isEmpty {
                             Tarjeta {
-                                Label("Por qué esta semana", systemImage: "text.bubble")
+                                Label(revision ? "Revisión y ajuste" : "Por qué esta semana", systemImage: "text.bubble")
                                     .font(.headline)
                                 Text(propuesta.explicacion)
                                     .font(.subheadline)
@@ -145,7 +155,7 @@ struct PropuestaIAView: View {
             }
             .background(Tema.fondo)
             .foregroundStyle(Tema.texto)
-            .navigationTitle("Entrenador")
+            .navigationTitle(revision ? "Revisión semanal" : "Entrenador")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -173,7 +183,10 @@ struct PropuestaIAView: View {
         let contexto = ContextoIA.texto(lunes: lunes, estado: almacen.estado, esReal: almacen.esReal,
                                         historico: almacen.historico, plan: plan.sesiones, dolor: dolor)
         do {
-            propuesta = try await claude.proponer(lunes: lunes, contexto: contexto, exigencia: exigencia, indicaciones: indicaciones)
+            let antes = Gasto.total
+            propuesta = try await claude.proponer(lunes: lunes, contexto: contexto, exigencia: exigencia,
+                                                  indicaciones: indicaciones, revision: revision)
+            gastoUltimo = Gasto.total - antes
         } catch {
             fallo = error.localizedDescription
         }
@@ -225,5 +238,53 @@ private struct FilaPropuesta: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .contentShape(Rectangle())
         .onTapGesture { withAnimation(.spring(duration: 0.3)) { abierta.toggle() } }
+    }
+}
+
+/// Lo que pasó la semana anterior, con tus datos reales (sin IA).
+struct ResumenSemanaPasada: View {
+    let lunes: Date
+    let plan: [SesionPlan]
+    let historico: Historico?
+
+    var body: some View {
+        let desde = Calendario.texto(lunes)
+        let hasta = Calendario.texto(lunes.addingTimeInterval(6 * 86400))
+        let hechas = (historico?.sesiones ?? []).filter { $0.dia >= desde && $0.dia <= hasta }
+        let delPlan = plan.filter { $0.fecha >= desde && $0.fecha <= hasta }
+        let cruce = Analisis.cumplimiento(plan: delPlan, hechas: historico?.sesiones ?? [], hoy: Calendario.texto(Date()))
+        let previsto = Totales.porSemana(delPlan).first
+        let noches = (historico?.sueno ?? []).filter { n in let t = Calendario.texto(n.fecha); return t >= desde && t <= hasta }
+        let dolor = DiarioDolor.registros.filter { $0.dia >= desde && $0.dia <= hasta }
+        Tarjeta {
+            Text("La semana pasada · S\(Calendario.semanaTemporada(lunes))")
+                .font(.headline)
+            ForEach([Deporte.bici, .agua, .carrera, .fuerza], id: \.self) { d in
+                let real = hechas.filter { $0.deporte == d.rawValue }.map(\.minutos).reduce(0, +)
+                let prev = previsto?.minutos[d] ?? 0
+                if real > 0 || prev > 0 {
+                    HStack {
+                        Circle().fill(d.color).frame(width: 8, height: 8)
+                        Text(d.rawValue).font(.subheadline)
+                        Spacer()
+                        Text(Totales.texto(real)).font(.subheadline.bold())
+                        if prev > 0 {
+                            Text("de \(Totales.texto(prev))").font(.caption).foregroundStyle(Tema.textoSecundario)
+                        }
+                    }
+                }
+            }
+            HStack(spacing: 14) {
+                if let p = Analisis.porcentaje(cruce) {
+                    DatoSimple(titulo: "Plan cumplido", valor: "\(Int(p.rounded())) %")
+                }
+                if !noches.isEmpty {
+                    DatoSimple(titulo: "Sueño medio", valor: String(format: "%.1f h", noches.map(\.horas).reduce(0, +) / Double(noches.count)))
+                }
+                if let peor = dolor.map(\.valor).max() {
+                    DatoSimple(titulo: "Dolor máximo", valor: "\(peor)/10")
+                }
+            }
+        }
     }
 }

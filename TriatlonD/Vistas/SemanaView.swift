@@ -13,6 +13,7 @@ struct SemanaView: View {
     @State private var confirmarVisible = false
     @State private var nuevaVisible = false
     @State private var entrenadorVisible = false
+    @State private var revisionVisible = false
     @State private var elegida: SesionPlan?
 
     var body: some View {
@@ -50,6 +51,18 @@ struct SemanaView: View {
                 }
 
                 let media = Totales.mediaReciente(almacen.historico)
+                Button {
+                    revisionVisible = true
+                } label: {
+                    Label("Revisión semanal", systemImage: "list.clipboard")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Tema.superficie)
+                        .foregroundStyle(Tema.experiencia)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Tema.experiencia.opacity(0.5), lineWidth: 1))
+                }
+
                 ForEach(Totales.porSemana(plan.sesiones), id: \.semana) { total in
                     CabeceraSemana(total: total, media: media)
                     ForEach(plan.ordenadas.filter { sesion in
@@ -99,6 +112,9 @@ struct SemanaView: View {
         }
         .sheet(isPresented: $entrenadorVisible) {
             PropuestaIAView(plan: plan, almacen: almacen)
+        }
+        .sheet(isPresented: $revisionVisible) {
+            PropuestaIAView(plan: plan, almacen: almacen, revision: true)
         }
         .confirmationDialog("¿Enviar el plan?", isPresented: $confirmarVisible, titleVisibility: .visible) {
             Button("Enviar") {

@@ -35,7 +35,10 @@ struct PestanasView: View {
                 .tabItem { Label("Datos", systemImage: "chart.xyaxis.line") }
         }
         .tint(Tema.turquesa)
-        .task { await almacen.recargar() }
+        .task {
+            Avisos.reprogramar(plan.sesiones)
+            await almacen.recargar()
+        }
         .onChange(of: fase) { _, nueva in
             // Al volver a la app (por ejemplo, tras un entreno) se piden los datos de nuevo.
             if nueva == .active {

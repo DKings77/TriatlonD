@@ -20,7 +20,7 @@ struct ErrorClaude: LocalizedError {
 final class ClienteClaude {
     static let modelo = "claude-sonnet-5-5"
 
-    func proponer(lunes: Date, contexto: String, exigencia: String, indicaciones: String) async throws -> PropuestaSemana {
+    func proponer(lunes: Date, contexto: String, exigencia: String, indicaciones: String, revision: Bool = false) async throws -> PropuestaSemana {
         guard let clave = Llavero.leer("claudeClave"), !clave.isEmpty else {
             throw ErrorClaude(mensaje: "Falta la clave de la API de Claude en Ajustes.")
         }
@@ -32,6 +32,9 @@ final class ClienteClaude {
         peticion.setValue("application/json", forHTTPHeaderField: "content-type")
 
         var mensaje = contexto
+        if revision {
+            mensaje += "\n\nREVISIÓN SEMANAL: en \"explicacion\" empieza revisando la semana anterior (volumen por deporte, carga, recuperación, sueño, dolor y plan frente a hecho, con las cifras del contexto) y después explica qué ajustas para la semana que propones. Hasta ocho frases, directas."
+        }
         switch exigencia {
         case "Suave": mensaje += "\n\nEXIGENCIA PEDIDA: semana suave, de descarga: menos horas y sin intensidad."
         case "Normal": mensaje += "\n\nEXIGENCIA PEDIDA: semana normal, como sus semanas habituales."
@@ -60,6 +63,11 @@ final class ClienteClaude {
             case 429: throw ErrorClaude(mensaje: "La API de Claude está saturada o sin saldo. Prueba en un rato.")
             default: throw ErrorClaude(mensaje: "La API de Claude respondió \(codigo). \(detalle ?? "")")
             }
+        }
+        if let uso = json["usage"] as? [String: Any] {
+            Gasto.apuntar(UsoIA(fecha: Calendario.texto(Date()), tipo: revision ? "Revisión" : "Propuesta",
+                                entrada: (uso["input_tokens"] as? NSNumber)?.intValue ?? 0,
+                                salida: (uso["output_tokens"] as? NSNumber)?.intValue ?? 0))
         }
         let bloques = json["content"] as? [[String: Any]] ?? []
         let texto = bloques.compactMap { $0["text"] as? String }.joined()

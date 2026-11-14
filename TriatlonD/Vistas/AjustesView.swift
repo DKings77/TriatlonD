@@ -27,6 +27,8 @@ struct AjustesView: View {
     @AppStorage("ref.pesoObjetivo") private var pesoObjetivo = 82.0
     @AppStorage("ref.fechaPeso") private var fechaPeso = "2027-06-21"
     @AppStorage("ref.nacimiento") private var nacimiento = "1985-12-09"
+    @AppStorage("avisos.activos") private var avisosActivos = false
+    @AppStorage("avisos.hora") private var avisosHora = 21
     @State private var claveClaude = ""
     @State private var hayClaude = Llavero.leer("claudeClave") != nil
 
@@ -146,10 +148,32 @@ struct AjustesView: View {
                             hayClaude = false
                         }
                     }
+                    LabeledContent("Gastado este mes", value: Gasto.texto(Gasto.esteMes))
+                    LabeledContent("Gastado en total", value: Gasto.texto(Gasto.total))
                 } header: {
                     Text("Entrenador (Claude)")
                 } footer: {
                     Text("Sirve para el botón \"Proponer semana\". Solo se usa cuando lo pulsas y gasta de tu monedero de la API: unos céntimos por propuesta. Solo se envía a Anthropic.")
+                }
+
+                Section {
+                    Toggle("Aviso la víspera", isOn: Binding(
+                        get: { avisosActivos },
+                        set: { nuevo in
+                            Task {
+                                let permitido = nuevo ? await Avisos.pedirPermiso() : true
+                                avisosActivos = nuevo && permitido
+                                Avisos.reprogramar(plan.sesiones)
+                            }
+                        }))
+                    if avisosActivos {
+                        Stepper("A las \(avisosHora):00", value: $avisosHora, in: 17...23)
+                            .onChange(of: avisosHora) { _, _ in Avisos.reprogramar(plan.sesiones) }
+                    }
+                } header: {
+                    Text("Avisos")
+                } footer: {
+                    Text("La noche antes te avisa de las sesiones del día siguiente. Funciona sin internet.")
                 }
 
                 Section {

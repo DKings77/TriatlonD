@@ -48,6 +48,7 @@ final class AlmacenPlan {
             UserDefaults.standard.set(datos, forKey: AlmacenPlan.claveGuardado)
         }
         UserDefaults.standard.set(pendientesBorrar, forKey: AlmacenPlan.claveBorrar)
+        Avisos.reprogramar(sesiones)
     }
 
     func mover(_ id: String, a fecha: Date) {
