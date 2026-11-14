@@ -132,7 +132,12 @@ struct BaseView: View {
             .filter { $0.sesion.fecha == hoy }
         // La fuerza va antes que el resto el mismo día, pero el personaje enseña el deporte principal.
         let principal = cruce.filter { $0.sesion.deporte != .fuerza }
-        return (principal.first { $0.estado == .pendiente } ?? principal.first ?? cruce.first)?.sesion.deporte
+        if let elegido = (principal.first { $0.estado == .pendiente } ?? principal.first)?.sesion.deporte {
+            return elegido
+        }
+        // Día solo de fuerza o sin nada: el próximo deporte del plan; si no hay, carrera.
+        let proximo = plan.ordenadas.first { $0.fecha > hoy && $0.deporte != .fuerza }
+        return proximo?.deporte ?? .carrera
     }
 
     private var fraseEnergia: String {
