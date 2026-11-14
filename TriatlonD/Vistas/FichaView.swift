@@ -85,7 +85,7 @@ struct FichaView: View {
             }
         }
         TarjetaCumplimiento(lista: Analisis.cumplimiento(plan: plan.sesiones, hechas: h.sesiones, hoy: Calendario.texto(Date())))
-        TarjetaConstancia(constancia: Analisis.constancia(h.sesiones, hoy: Date()))
+        TarjetaConstancia(constancia: Analisis.constancia(h.sesiones, hoy: Date()), hechas: h.sesiones, plan: plan.sesiones)
     }
 
     @ViewBuilder

@@ -96,6 +96,11 @@ struct BaseView: View {
                             Text("Tu personaje corre más ligero cuanta más energía tienes. Sale de tu sueño y tu variabilidad del pulso.")
                                 .font(.footnote)
                                 .foregroundStyle(Tema.textoSecundario)
+                            if Juego.modoBaja(estado, historico: almacen.historico) == nil {
+                                Label("Modo Baja: no activo", systemImage: "battery.100")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(Tema.carrera)
+                            }
                         }
                     }
                 }

@@ -82,11 +82,9 @@ private struct FilaNota: View {
                 }
             }
             .frame(height: 10)
-            if detalle {
-                Text(nota.fuente + (nota.siguiente.map { " · " + $0 } ?? ""))
+            Text(detalle ? nota.fuente + (nota.siguiente.map { " · " + $0 } ?? "") : nota.fuente)
                     .font(.caption)
                     .foregroundStyle(Tema.textoSecundario)
-            }
         }
     }
 }

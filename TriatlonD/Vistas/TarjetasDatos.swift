@@ -89,33 +89,227 @@ struct TarjetaCumplimiento: View {
 /// Cinco semanas de puntos: un día entrenado, un punto encendido.
 struct TarjetaConstancia: View {
     let constancia: Constancia
+    let hechas: [SesionHecha]
+    let plan: [SesionPlan]
     @State private var visible = false
+    @State private var elegido: String?
+
+    private let calendario = Calendar(identifier: .gregorian)
+    private var hoy: Date { calendario.startOfDay(for: Date()) }
+    private var hoyTexto: String { Calendario.texto(Date()) }
+
+    /// Cinco semanas de lunes a domingo, terminando en la semana actual.
+    private var semanas: [[Date]] {
+        let lunes = hoy.addingTimeInterval(-Double(Calendario.diaSemana(hoy) - 1) * 86400)
+        return (0..<5).reversed().map { atras in
+            (0..<7).compactMap { d in calendario.date(byAdding: .day, value: d - atras * 7, to: lunes) }
+        }
+    }
+
+    private var cruce: [Cumplimiento] {
+        Analisis.cumplimiento(plan: plan, hechas: hechas, hoy: hoyTexto)
+    }
 
     var body: some View {
         Tarjeta {
-            Text("Constancia")
-                .font(.headline)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
-                ForEach(Array(constancia.dias.enumerated()), id: \.offset) { indice, dia in
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(dia.entrenado ? Tema.turquesa : Tema.pista)
-                        .frame(height: 22)
-                        .scaleEffect(visible ? 1 : 0.3)
-                        .opacity(visible ? 1 : 0)
-                        .animation(.spring(duration: 0.4).delay(Double(indice) * 0.015), value: visible)
+            HStack {
+                Text("Constancia")
+                    .font(.headline)
+                Spacer()
+                Text(rangoMeses)
+                    .font(.caption)
+                    .foregroundStyle(Tema.textoSecundario)
+            }
+            // Cabecera de días
+            HStack(spacing: 4) {
+                Text("").frame(width: 28)
+                ForEach(Calendario.nombresDia, id: \.self) { d in
+                    Text(String(d.prefix(1)))
+                        .font(.caption2.bold())
+                        .foregroundStyle(Tema.textoSecundario)
+                        .frame(maxWidth: .infinity)
                 }
+            }
+            ForEach(Array(semanas.enumerated()), id: \.offset) { fila, semana in
+                HStack(spacing: 4) {
+                    Text("S\(Calendario.semanaTemporada(semana[0]))")
+                        .font(.caption2.bold())
+                        .foregroundStyle(Tema.textoSecundario)
+                        .frame(width: 28, alignment: .leading)
+                    ForEach(Array(semana.enumerated()), id: \.offset) { col, dia in
+                        celda(dia)
+                            .scaleEffect(visible ? 1 : 0.4)
+                            .opacity(visible ? 1 : 0)
+                            .animation(.spring(duration: 0.4).delay(Double(fila * 7 + col) * 0.012), value: visible)
+                    }
+                }
+            }
+            if let elegido {
+                detalle(elegido)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
             HStack(spacing: 0) {
                 DatoSimple(titulo: "Racha actual", valor: "\(constancia.rachaActual) días")
                 DatoSimple(titulo: "Mejor racha", valor: "\(constancia.mejorRacha) días")
-                DatoSimple(titulo: "Días entrenados", valor: "\(constancia.diasEntrenados) de 35")
+                DatoSimple(titulo: "Días entrenados", valor: "\(diasEntrenados) de \(diasPasados)")
             }
-            Text("Cada cuadro es un día, de hace cinco semanas a hoy.")
+            Text("Cada casilla es un día, de lunes a domingo. Los iconos son lo que entrenaste; cuanto más intenso el fondo, más tiempo. Una X roja es una sesión del plan que no se hizo; los iconos con borde son lo que queda por hacer. Toca un día para ver el detalle.")
                 .font(.caption)
                 .foregroundStyle(Tema.textoSecundario)
         }
+        .animation(.spring(duration: 0.3), value: elegido)
         .onAppear { visible = true }
         .onDisappear { visible = false }
+    }
+
+    private var diasPasados: Int {
+        semanas.joined().filter { $0 <= hoy }.count
+    }
+    private var diasEntrenados: Int {
+        let conEntreno = Set(hechas.map(\.dia))
+        return semanas.joined().filter { $0 <= hoy && conEntreno.contains(Calendario.texto($0)) }.count
+    }
+    private var rangoMeses: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_ES")
+        f.dateFormat = "LLLL"
+        let primero = f.string(from: semanas.first?.first ?? hoy)
+        let ultimo = f.string(from: semanas.last?.last ?? hoy)
+        return primero == ultimo ? primero.capitalized : "\(primero.capitalized) – \(ultimo)"
+    }
+
+    @ViewBuilder
+    private func celda(_ dia: Date) -> some View {
+        let texto = Calendario.texto(dia)
+        let delDia = hechas.filter { $0.dia == texto }
+        let minutos = delDia.map(\.minutos).reduce(0, +)
+        let deportes = orden(delDia.compactMap { $0.deporte.flatMap(Deporte.init(rawValue:)) })
+        let planDia = cruce.filter { $0.sesion.fecha == texto }
+        let saltadas = planDia.filter { $0.estado == .saltada }
+        let pendientes = planDia.filter { $0.estado == .pendiente }
+        let futuro = dia > hoy
+        let esHoy = texto == hoyTexto
+        let numero = calendario.component(.day, from: dia)
+
+        Button {
+            elegido = elegido == texto ? nil : texto
+        } label: {
+            VStack(spacing: 2) {
+                Text(numero == 1 ? "1 \(mesCorto(dia))" : "\(numero)")
+                    .font(.system(size: 9, weight: esHoy ? .heavy : .semibold))
+                    .foregroundStyle(esHoy ? Tema.turquesa : (futuro ? Tema.textoSecundario.opacity(0.6) : Tema.textoSecundario))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 0)
+                HStack(spacing: 1) {
+                    if !deportes.isEmpty {
+                        ForEach(deportes.prefix(2), id: \.self) { d in
+                            Image(systemName: icono(d))
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(d.color)
+                        }
+                    } else if !pendientes.isEmpty {
+                        ForEach(orden(pendientes.map(\.sesion.deporte)).prefix(2), id: \.self) { d in
+                            Image(systemName: icono(d))
+                                .font(.system(size: 10))
+                                .foregroundStyle(d.color.opacity(0.55))
+                        }
+                    } else if !saltadas.isEmpty {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(Tema.alerta)
+                    }
+                }
+                .frame(height: 13)
+                Spacer(minLength: 0)
+            }
+            .padding(4)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .background(fondo(minutos: minutos, futuro: futuro))
+            .clipShape(RoundedRectangle(cornerRadius: 7))
+            .overlay(
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(esHoy ? Tema.turquesa : (elegido == texto ? Tema.texto : (pendientes.isEmpty ? .clear : Tema.textoSecundario.opacity(0.35))),
+                            style: StrokeStyle(lineWidth: esHoy || elegido == texto ? 2 : 1, dash: pendientes.isEmpty || esHoy ? [] : [3, 2]))
+            )
+            .overlay(alignment: .topTrailing) {
+                if !saltadas.isEmpty && !deportes.isEmpty {
+                    Circle().fill(Tema.alerta).frame(width: 5, height: 5).padding(4)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(Calendario.etiqueta(texto)): \(deportes.isEmpty ? "sin entreno" : "\(Int(minutos)) minutos")")
+    }
+
+    private func fondo(minutos: Double, futuro: Bool) -> Color {
+        if futuro { return Tema.pista.opacity(0.35) }
+        switch minutos {
+        case 0: return Tema.pista
+        case ..<45: return Tema.turquesa.opacity(0.18)
+        case ..<90: return Tema.turquesa.opacity(0.32)
+        default: return Tema.turquesa.opacity(0.5)
+        }
+    }
+
+    @ViewBuilder
+    private func detalle(_ texto: String) -> some View {
+        let delDia = hechas.filter { $0.dia == texto }
+        let planDia = cruce.filter { $0.sesion.fecha == texto }
+        VStack(alignment: .leading, spacing: 6) {
+            Text(Calendario.etiqueta(texto))
+                .font(.subheadline.bold())
+            if delDia.isEmpty && planDia.isEmpty {
+                Text(texto > hoyTexto ? "Nada planificado." : "Descanso.")
+                    .font(.caption)
+                    .foregroundStyle(Tema.textoSecundario)
+            }
+            ForEach(delDia) { s in
+                HStack(spacing: 8) {
+                    let d = s.deporte.flatMap(Deporte.init(rawValue:)) ?? .fuerza
+                    Image(systemName: icono(d)).foregroundStyle(d.color).frame(width: 18)
+                    Text(s.nombre).font(.caption).lineLimit(1)
+                    Spacer()
+                    Text("\(Int(s.minutos))'").font(.caption.bold())
+                }
+            }
+            ForEach(planDia.filter { $0.estado == .saltada || $0.estado == .pendiente }) { c in
+                HStack(spacing: 8) {
+                    Image(systemName: c.estado == .saltada ? "xmark.circle" : "circle.dashed")
+                        .foregroundStyle(c.estado == .saltada ? Tema.alerta : Tema.textoSecundario)
+                        .frame(width: 18)
+                    Text(c.sesion.titulo).font(.caption).lineLimit(1)
+                    Spacer()
+                    Text(c.estado == .saltada ? "no hecha" : "pendiente")
+                        .font(.caption2)
+                        .foregroundStyle(Tema.textoSecundario)
+                }
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Tema.pista.opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func orden(_ lista: [Deporte]) -> [Deporte] {
+        [Deporte.agua, .bici, .carrera, .fuerza].filter { lista.contains($0) }
+    }
+
+    private func icono(_ d: Deporte) -> String {
+        switch d {
+        case .bici: return "bicycle"
+        case .agua: return "figure.pool.swim"
+        case .carrera: return "figure.run"
+        case .fuerza: return "dumbbell.fill"
+        }
+    }
+
+    private func mesCorto(_ dia: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_ES")
+        f.dateFormat = "MMM"
+        return f.string(from: dia).replacingOccurrences(of: ".", with: "")
     }
 }
 
