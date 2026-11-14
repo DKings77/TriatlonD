@@ -158,11 +158,23 @@ struct GraficaSueno: View {
         Tarjeta {
             Text("Sueño de las últimas noches")
                 .font(.headline)
+            if let ultima = noches.last {
+                DatoUltimo(principal: String(format: "%.1f h", ultima.horas), etiqueta: "anoche",
+                           color: color(ultima),
+                           secundario: String(format: "media %.1f h", noches.map(\.horas).reduce(0, +) / Double(noches.count)))
+            }
             Chart {
                 ForEach(noches) { noche in
                     BarMark(x: .value("Noche", noche.fecha, unit: .day), y: .value("Horas", noche.horas * avance))
                         .foregroundStyle(color(noche))
                         .cornerRadius(3)
+                        .annotation(position: .top, spacing: 2) {
+                            if noche.id == noches.last?.id {
+                                Text(String(format: "%.1f", noche.horas))
+                                    .font(.caption2.bold())
+                                    .foregroundStyle(color(noche))
+                            }
+                        }
                 }
                 RuleMark(y: .value("Objetivo", 7))
                     .foregroundStyle(Tema.textoSecundario)
@@ -196,11 +208,15 @@ struct GraficaVFC: View {
         Tarjeta {
             Text("Variabilidad del pulso")
                 .font(.headline)
+            if let ultima = noches.last {
+                let media = ultima.media
+                let diferencia = media.map { (ultima.anoche - $0) / $0 * 100 }
+                DatoUltimo(principal: "\(Int(ultima.anoche)) ms", etiqueta: "anoche",
+                           color: (diferencia ?? 0) < -10 ? Tema.alerta : ((diferencia ?? 0) < 0 ? Tema.experiencia : Tema.carrera),
+                           secundario: media.map { m in "media \(Int(m)) ms (\(diferencia.map { String(format: "%+.0f %%", $0) } ?? ""))" })
+            }
             Chart {
                 ForEach(noches) { noche in
-                    AreaMark(x: .value("Noche", noche.fecha), y: .value("VFC", noche.anoche))
-                        .foregroundStyle(Tema.natacion.opacity(0.18))
-                        .interpolationMethod(.catmullRom)
                     LineMark(x: .value("Noche", noche.fecha), y: .value("VFC", noche.anoche), series: .value("Serie", "Cada noche"))
                         .foregroundStyle(Tema.natacion)
                         .interpolationMethod(.catmullRom)
@@ -210,7 +226,18 @@ struct GraficaVFC: View {
                             .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
                     }
                 }
+                if let ultima = noches.last {
+                    PointMark(x: .value("Noche", ultima.fecha), y: .value("VFC", ultima.anoche))
+                        .foregroundStyle(Tema.natacion)
+                        .symbolSize(60)
+                        .annotation(position: .top, spacing: 4) {
+                            Text("\(Int(ultima.anoche))")
+                                .font(.caption2.bold())
+                                .foregroundStyle(Tema.natacion)
+                        }
+                }
             }
+            .chartYScale(domain: .automatic(includesZero: false))
             .frame(height: 170)
             .revelado(avance)
             Text("Azul, cada noche. Amarillo discontinuo, tu media de siete días. Si el azul cae varios días por debajo, toca aflojar.")
@@ -358,5 +385,30 @@ struct Metrica: View {
         .padding(12)
         .background(Tema.superficie)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+/// El último dato de una gráfica, grande y legible, con su referencia al lado.
+struct DatoUltimo: View {
+    let principal: String
+    let etiqueta: String
+    let color: Color
+    var secundario: String?
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(principal)
+                .font(.title2.bold())
+                .foregroundStyle(color)
+            Text(etiqueta)
+                .font(.caption)
+                .foregroundStyle(Tema.textoSecundario)
+            Spacer()
+            if let secundario {
+                Text(secundario)
+                    .font(.caption.bold())
+                    .foregroundStyle(Tema.textoSecundario)
+            }
+        }
     }
 }

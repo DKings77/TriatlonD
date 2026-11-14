@@ -552,11 +552,22 @@ struct TarjetaRecuperacion: View {
                 Text("Body Battery recargada cada día")
                     .font(.subheadline)
                     .padding(.top, 4)
+                if let ultimo = historico.bateria.last {
+                    DatoUltimo(principal: "\(Int(ultimo.valor))", etiqueta: "última noche", color: Tema.turquesa,
+                               secundario: "media \(Int(historico.bateria.map(\.valor).reduce(0, +) / Double(historico.bateria.count)))")
+                }
                 Chart {
                     ForEach(historico.bateria) { d in
                         BarMark(x: .value("Día", d.fecha, unit: .day), y: .value("Carga", d.valor * avance))
-                            .foregroundStyle(Tema.turquesa)
+                            .foregroundStyle(d.id == historico.bateria.last?.id ? Tema.turquesa : Tema.turquesa.opacity(0.55))
                             .cornerRadius(3)
+                            .annotation(position: .top, spacing: 2) {
+                                if d.id == historico.bateria.last?.id {
+                                    Text("\(Int(d.valor))")
+                                        .font(.caption2.bold())
+                                        .foregroundStyle(Tema.turquesa)
+                                }
+                            }
                     }
                 }
                 .chartYScale(domain: 0...100)
