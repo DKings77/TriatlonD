@@ -9,7 +9,10 @@ import SwiftUI
 
 struct SemanaView: View {
     let plan: AlmacenPlan
+    let almacen: AlmacenEstado
     @State private var confirmarVisible = false
+    @State private var nuevaVisible = false
+    @State private var entrenadorVisible = false
     @State private var elegida: SesionPlan?
 
     var body: some View {
@@ -21,6 +24,29 @@ struct SemanaView: View {
                     Text("Toca una sesión para ver sus pasos o cambiarla de día")
                         .font(.subheadline)
                         .foregroundStyle(Tema.textoSecundario)
+                }
+
+                HStack(spacing: 10) {
+                    Button {
+                        entrenadorVisible = true
+                    } label: {
+                        Label("Proponer semana", systemImage: "sparkles")
+                            .font(.subheadline.bold())
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(Tema.experiencia)
+                            .foregroundStyle(Tema.fondo)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    Button {
+                        nuevaVisible = true
+                    } label: {
+                        Label("Nueva sesión", systemImage: "plus")
+                            .font(.subheadline.bold())
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(Tema.superficie)
+                            .foregroundStyle(Tema.texto)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
                 }
 
                 ForEach(plan.ordenadas) { sesion in
@@ -44,6 +70,12 @@ struct SemanaView: View {
                 }
                 .disabled(plan.enviando)
 
+                if !plan.pendientesBorrar.isEmpty {
+                    Text("Hay \(plan.pendientesBorrar.count) sesiones borradas que se quitarán de Garmin y Rouvy al enviar.")
+                        .font(.caption)
+                        .foregroundStyle(Tema.alerta)
+                }
+
                 Text("Bici, carrera y fuerza se envían a intervals.icu y de ahí a Garmin y Rouvy. La natación se programa en Garmin aparte y el test de FTP se hace con el de Rouvy.")
                     .font(.caption)
                     .foregroundStyle(Tema.textoSecundario)
@@ -56,13 +88,19 @@ struct SemanaView: View {
         .sheet(item: $elegida) { sesion in
             DetalleSesionView(sesion: sesion, plan: plan)
         }
+        .sheet(isPresented: $nuevaVisible) {
+            EditorSesionView(plan: plan, original: nil)
+        }
+        .sheet(isPresented: $entrenadorVisible) {
+            PropuestaIAView(plan: plan, almacen: almacen)
+        }
         .confirmationDialog("¿Enviar el plan?", isPresented: $confirmarVisible, titleVisibility: .visible) {
             Button("Enviar") {
                 Task { await plan.sincronizar() }
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("Se dejará intervals.icu igual que este plan: crea lo que falte, corrige lo que haya cambiado y mueve lo que hayas cambiado de día. No duplica.")
+            Text("Se dejará intervals.icu igual que este plan: crea lo que falte, corrige lo que haya cambiado, mueve lo que hayas cambiado de día y quita lo que hayas borrado. No duplica.")
         }
         .alert("Plan", isPresented: Binding(get: { plan.mensaje != nil }, set: { if !$0 { plan.mensaje = nil } })) {
             Button("Entendido", role: .cancel) {}
@@ -127,6 +165,8 @@ struct DetalleSesionView: View {
     let plan: AlmacenPlan
     @Environment(\.dismiss) private var cerrar
     @State private var dia = Date()
+    @State private var editando = false
+    @State private var confirmarBorrado = false
 
     var body: some View {
         NavigationStack {
@@ -181,11 +221,47 @@ struct DetalleSesionView: View {
                             .font(.caption)
                             .foregroundStyle(Tema.textoSecundario)
                     }
+
+                    HStack(spacing: 10) {
+                        Button {
+                            editando = true
+                        } label: {
+                            Label("Editar", systemImage: "pencil")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 46)
+                                .background(Tema.superficie)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        Button {
+                            confirmarBorrado = true
+                        } label: {
+                            Label("Borrar", systemImage: "trash")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity, minHeight: 46)
+                                .background(Tema.superficie)
+                                .foregroundStyle(Tema.alerta)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
                 }
                 .padding(20)
             }
             .background(Tema.fondo)
             .foregroundStyle(Tema.texto)
+            .sheet(isPresented: $editando, onDismiss: { cerrar() }) {
+                EditorSesionView(plan: plan, original: sesion)
+            }
+            .confirmationDialog("¿Borrar esta sesión?", isPresented: $confirmarBorrado, titleVisibility: .visible) {
+                Button("Borrar del plan", role: .destructive) {
+                    plan.borrar(sesion.id)
+                    cerrar()
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text(sesion.eventoId != nil
+                     ? "Se quita del plan ahora y de Garmin y Rouvy cuando pulses \"Aprobar y enviar\"."
+                     : "Se quita del plan de la app.")
+            }
             .navigationTitle(Calendario.etiqueta(sesion.fecha))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

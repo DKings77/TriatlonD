@@ -16,7 +16,42 @@ struct EscenaCorredor: View {
     var energia: Double        // 0-100
     var notaSueno: Double?
 
+    /// Fotogramas ilustrados (corredor_1, corredor_2…) si están en el catálogo de imágenes.
+    private static let fotogramas: [UIImage] = (1...12).compactMap { UIImage(named: "corredor_\($0)") }
+
     var body: some View {
+        if EscenaCorredor.fotogramas.count >= 2 {
+            ilustrado
+        } else {
+            dibujado
+        }
+    }
+
+    /// El personaje con ilustraciones reales, sobre el mismo fondo animado.
+    private var ilustrado: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { linea in
+            let t = linea.date.timeIntervalSinceReferenceDate
+            let ritmo = 6 + 6 * energia / 100            // fotogramas por segundo
+            let indice = Int(t * ritmo) % EscenaCorredor.fotogramas.count
+            ZStack {
+                Canvas { contexto, tamano in
+                    let escala = tamano.width / 350
+                    contexto.scaleBy(x: escala, y: escala)
+                    dibujarFondo(&contexto, t: t)
+                }
+                Image(uiImage: EscenaCorredor.fotogramas[indice])
+                    .resizable()
+                    .scaledToFit()
+                    .padding(.top, 30)
+                    .offset(y: CGFloat(sin(t * ritmo * 0.5)) * 3)
+            }
+        }
+        .aspectRatio(350.0 / 400.0, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .accessibilityLabel("Tu personaje corriendo")
+    }
+
+    private var dibujado: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { linea in
             Canvas { contexto, tamano in
                 let t = linea.date.timeIntervalSinceReferenceDate

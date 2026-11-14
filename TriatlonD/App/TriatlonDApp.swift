@@ -27,7 +27,7 @@ struct PestanasView: View {
                 .tabItem { Label("Base", systemImage: "flame") }
             TravesiaView()
                 .tabItem { Label("Travesía", systemImage: "map") }
-            SemanaView(plan: plan)
+            SemanaView(plan: plan, almacen: almacen)
                 .tabItem { Label("Plan", systemImage: "calendar") }
             LesionView()
                 .tabItem { Label("Lesión", systemImage: "bandage") }

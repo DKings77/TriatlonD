@@ -152,9 +152,9 @@ enum Calendario {
 
 /// El plan con el que arranca la app: fin de semana de la S10 y la S11 entera.
 enum PlanInicial {
-    private static let carrera4 = "Calentamiento\n- 5m Z1 HR\n\n5x\n- 4m Z2 HR\n- 1m Z1 HR\n\nEnfriamiento\n- 5m Z1 HR"
-    private static let carrera6 = "Calentamiento\n- 5m Z1 HR\n\n4x\n- 6m Z2 HR\n- 1m Z1 HR\n\nEnfriamiento\n- 5m Z1 HR"
-    private static let bici60 = "- 10m 60%\n- 40m 70%\n- 10m 55%"
+    static let carrera4 = "Calentamiento\n- 5m Z1 HR\n\n5x\n- 4m Z2 HR\n- 1m Z1 HR\n\nEnfriamiento\n- 5m Z1 HR"
+    static let carrera6 = "Calentamiento\n- 5m Z1 HR\n\n4x\n- 6m Z2 HR\n- 1m Z1 HR\n\nEnfriamiento\n- 5m Z1 HR"
+    static let bici60 = "- 10m 60%\n- 40m 70%\n- 10m 55%"
 
     static let sesiones: [SesionPlan] = [
         SesionPlan(id: "S10-C2", fecha: "2026-11-14", tipo: "Run", interior: false,
@@ -194,5 +194,73 @@ enum PlanInicial {
         SesionPlan(id: "S11-C2", fecha: "2026-11-21", tipo: "Run", interior: false,
                    nombre: "S11 D6: C2 38' Z2 2/2 | 5' cal + 4 x (6' Z2 + 1' caminar) + 5' enf",
                    pasos: carrera6, seEnvia: true, xp: 100)
+    ]
+}
+
+/// Tu nomenclatura: "S12 D2: B1 60' Z2 140W | estructura".
+enum Nomenclatura {
+    static func letra(_ tipo: String) -> String {
+        switch tipo {
+        case "Ride": return "B"
+        case "Run": return "C"
+        case "Swim": return "N"
+        default: return "F"
+        }
+    }
+
+    /// "S12 D2: B1"
+    static func prefijo(fecha: Date, tipo: String, numero: Int) -> String {
+        "S\(Calendario.semanaTemporada(fecha)) D\(Calendario.diaSemana(fecha)): \(letra(tipo))\(numero)"
+    }
+
+    /// Separa un nombre en número de orden, título y estructura.
+    static func partes(_ nombre: String) -> (numero: Int?, titulo: String, estructura: String) {
+        let trozos = nombre.components(separatedBy: " | ")
+        var titulo = trozos.first ?? nombre
+        let estructura = trozos.count > 1 ? trozos.dropFirst().joined(separator: " | ") : ""
+        var numero: Int?
+        if let rango = titulo.range(of: #"^S\d+ D\d: [BCNF](\d+) ?"#, options: .regularExpression) {
+            let cabecera = String(titulo[rango])
+            let cifras = cabecera.components(separatedBy: ": ").last?.filter(\.isNumber) ?? ""
+            numero = Int(cifras)
+            titulo = String(titulo[rango.upperBound...])
+        }
+        return (numero, titulo, estructura)
+    }
+
+    static func nombre(fecha: Date, tipo: String, numero: Int, titulo: String, estructura: String) -> String {
+        var texto = prefijo(fecha: fecha, tipo: tipo, numero: numero)
+        let limpio = titulo.trimmingCharacters(in: .whitespaces)
+        if !limpio.isEmpty { texto += " " + limpio }
+        let serie = estructura.trimmingCharacters(in: .whitespaces)
+        if !serie.isEmpty { texto += " | " + serie }
+        return texto
+    }
+}
+
+/// Sesiones tipo para crear una nueva sin escribir los pasos a mano.
+struct Plantilla: Identifiable {
+    var id: String { etiqueta }
+    let etiqueta: String
+    let tipo: String
+    let titulo: String
+    let estructura: String
+    let pasos: String
+
+    static let todas: [Plantilla] = [
+        Plantilla(etiqueta: "Bici 60' Z2", tipo: "Ride", titulo: "60' Z2 140W",
+                  estructura: "10' cal + 40' Z2 140W + 10' enf", pasos: PlanInicial.bici60),
+        Plantilla(etiqueta: "Bici 55' con 3 x 3'", tipo: "Ride", titulo: "55' Z2",
+                  estructura: "10' cal + 20' Z2 140W + 3 x (3' 172W + 3' rec) + 7' enf",
+                  pasos: "- 10m 60%\n- 20m 70%\n\n3x\n- 3m 86%\n- 3m 60%\n\n- 7m 55%"),
+        Plantilla(etiqueta: "Carrera 5 x (4' + 1')", tipo: "Run", titulo: "35' Z2",
+                  estructura: "5' cal + 5 x (4' Z2 + 1' caminar) + 5' enf", pasos: PlanInicial.carrera4),
+        Plantilla(etiqueta: "Carrera 4 x (6' + 1')", tipo: "Run", titulo: "38' Z2",
+                  estructura: "5' cal + 4 x (6' Z2 + 1' caminar) + 5' enf", pasos: PlanInicial.carrera6),
+        Plantilla(etiqueta: "Fuerza 50'", tipo: "WeightTraining", titulo: "50'", estructura: "", pasos: "- 50m"),
+        Plantilla(etiqueta: "Fuerza 35'", tipo: "WeightTraining", titulo: "35'", estructura: "", pasos: "- 35m"),
+        Plantilla(etiqueta: "Natación 1700 m", tipo: "Swim", titulo: "1700m Z2",
+                  estructura: "300 suave + 8 x 50 técnica + 3 x 300 aeróbico + 100 suave",
+                  pasos: "300 m suave\n8 x 50 m técnica, 20'' de descanso\n3 x 300 m aeróbico a 2:15-2:25, 30'' de descanso\n100 m suave")
     ]
 }

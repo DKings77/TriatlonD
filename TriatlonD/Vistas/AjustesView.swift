@@ -13,6 +13,8 @@ struct AjustesView: View {
     @State private var hayClave = Llavero.leer("garminClave") != nil
     @State private var claveIntervals = ""
     @State private var hayIntervals = Llavero.leer("intervalsClave") != nil
+    @State private var claveClaude = ""
+    @State private var hayClaude = Llavero.leer("claudeClave") != nil
 
     var body: some View {
         NavigationStack {
@@ -70,7 +72,32 @@ struct AjustesView: View {
                 } header: {
                     Text("intervals.icu")
                 } footer: {
-                    Text("Sirve para enviar los entrenos de bici desde la pestaña Semana. Solo se envía a intervals.icu.")
+                    Text("Sirve para enviar los entrenos desde la pestaña Plan. Solo se envía a intervals.icu.")
+                }
+
+                Section {
+                    SecureField("Clave de la API de Claude", text: $claveClaude)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    Text(hayClaude ? "Hay una clave guardada en este iPhone." : "No hay ninguna clave guardada.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button("Guardar") {
+                        Llavero.guardar(claveClaude.trimmingCharacters(in: .whitespacesAndNewlines), clave: "claudeClave")
+                        claveClaude = ""
+                        hayClaude = true
+                    }
+                    .disabled(claveClaude.isEmpty)
+                    if hayClaude {
+                        Button("Borrar la clave", role: .destructive) {
+                            Llavero.guardar("", clave: "claudeClave")
+                            hayClaude = false
+                        }
+                    }
+                } header: {
+                    Text("Entrenador (Claude)")
+                } footer: {
+                    Text("Sirve para el botón \"Proponer semana\". Solo se usa cuando lo pulsas y gasta de tu monedero de la API: unos céntimos por propuesta. Solo se envía a Anthropic.")
                 }
 
                 Section {

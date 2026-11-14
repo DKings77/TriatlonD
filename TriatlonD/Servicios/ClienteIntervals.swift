@@ -15,6 +15,7 @@ struct ResultadoEnvio {
 
 struct ErrorIntervals: LocalizedError {
     var mensaje: String
+    var codigo = 0
     var errorDescription: String? { mensaje }
 }
 
@@ -42,15 +43,31 @@ final class ClienteIntervals {
             throw ErrorIntervals(mensaje: "intervals.icu ha rechazado la clave (código \(codigo)).")
         }
         guard (200...299).contains(codigo) else {
-            throw ErrorIntervals(mensaje: "intervals.icu respondió \(codigo).")
+            throw ErrorIntervals(mensaje: "intervals.icu respondió \(codigo).", codigo: codigo)
         }
         return datos
+    }
+
+    /// Borra eventos del calendario. Devuelve los que no se han podido borrar.
+    func borrar(_ ids: [Int]) async throws -> [Int] {
+        var quedan: [Int] = []
+        for id in Set(ids) {
+            do {
+                _ = try await peticion("/events/\(id)", metodo: "DELETE")
+            } catch let error as ErrorIntervals where error.codigo == 404 || error.codigo == 422 {
+                continue   // ya no existía
+            } catch let error as ErrorIntervals where error.codigo >= 500 {
+                quedan.append(id)
+            }
+        }
+        return quedan
     }
 
     /// Devuelve el recuento y, por cada sesión, el id de su evento en intervals.icu.
     func sincronizar(_ sesiones: [SesionPlan]) async throws -> (ResultadoEnvio, [String: Int]) {
         var resultado = ResultadoEnvio()
         var ids: [String: Int] = [:]
+        if sesiones.isEmpty { return (resultado, ids) }
         guard let primera = sesiones.map(\.fecha).min(), let ultima = sesiones.map(\.fecha).max(),
               let inicio = Calendario.fecha(primera), let fin = Calendario.fecha(ultima) else {
             return (resultado, ids)
