@@ -88,10 +88,11 @@ struct BaseView: View {
                 HStack(alignment: .top, spacing: 12) {
                     EscenaPersonaje(deporte: deporteDeHoy, energia: Juego.energia(estado) ?? 50, notaSueno: estado.sueno.puntuacion)
                         .frame(maxWidth: .infinity)
+                        .frame(height: 280)
                     PanelEnergia(estado: estado, historico: almacen.historico, frase: fraseEnergia)
                         .frame(maxWidth: .infinity)
+                        .frame(height: 280)
                 }
-                .frame(height: 250)
 
                 TarjetaHoyToca(plan: plan, almacen: almacen)
 
@@ -269,7 +270,7 @@ struct PanelEnergia: View {
                     ForEach((1...5).reversed(), id: \.self) { n in
                         RoundedRectangle(cornerRadius: 4)
                             .fill(n <= nivel && visible ? color : Tema.pista)
-                            .frame(width: 34, height: 15)
+                            .frame(width: 34, height: 13)
                             .animation(.spring(duration: 0.4).delay(Double(5 - n) * 0.08), value: visible)
                     }
                 }
@@ -284,7 +285,8 @@ struct PanelEnergia: View {
             }
             Text(frase)
                 .font(.subheadline.bold())
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
             VStack(alignment: .leading, spacing: 3) {
                 fila("moon.zzz.fill", estado.sueno.horas.map { String(format: "%.1f h", $0) } ?? "–")
                 fila("waveform.path.ecg", estado.vfc.anocheMs.map { "\(Int($0)) ms" } ?? "–")
