@@ -274,7 +274,7 @@ struct PanelEnergia: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("\(Int(energia))")
+                    Text(Juego.energia(estado).map { "\(Int($0))" } ?? "–")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .foregroundStyle(color)
                     Text("Nivel \(nivel) de 5")

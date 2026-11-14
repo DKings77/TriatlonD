@@ -123,13 +123,21 @@ final class ClienteGarmin {
         let hace30 = Self.fecha(Date().addingTimeInterval(-30 * 86400))
         _ = try await obtenerToken()
 
-        let vfc = try? await json("/hrv-service/hrv/\(hoy)") as? [String: Any]
-        let resumenVfc = vfc?["hrvSummary"] as? [String: Any]
+        // Pasada la medianoche, la noche de hoy aún no existe: se usa la última que haya.
+        let ayer = Self.fecha(Date().addingTimeInterval(-86400))
+        var resumenVfc = (try? await json("/hrv-service/hrv/\(hoy)") as? [String: Any])?["hrvSummary"] as? [String: Any]
+        if numero(resumenVfc?["lastNightAvg"]) == nil {
+            resumenVfc = (try? await json("/hrv-service/hrv/\(ayer)") as? [String: Any])?["hrvSummary"] as? [String: Any]
+        }
 
-        let sueno = try? await json("/sleep-service/sleep/dailySleep?date=\(hoy)") as? [String: Any]
-        let notas = sueno?["sleepScores"] as? [String: Any]
+        var sueno = try? await json("/sleep-service/sleep/dailySleep?date=\(hoy)") as? [String: Any]
+        if (numero(sueno?["sleepTimeSeconds"]) ?? 0) <= 0 {
+            sueno = try? await json("/sleep-service/sleep/dailySleep?date=\(ayer)") as? [String: Any]
+        }
+        let detalle = (sueno?["dailySleepDTO"] as? [String: Any]) ?? sueno
+        let notas = (detalle?["sleepScores"] as? [String: Any]) ?? (sueno?["sleepScores"] as? [String: Any])
         let notaSueno = numero(notas?["overall"]) ?? numero((notas?["overall"] as? [String: Any])?["value"])
-        let segundos = numero(sueno?["sleepTimeSeconds"])
+        let segundos = numero(sueno?["sleepTimeSeconds"]) ?? numero(detalle?["sleepTimeSeconds"])
 
         let peso = try? await json("/weight-service/weight/range/\(hace30)/\(hoy)") as? [String: Any]
         let gramos = numero((peso?["totalAverage"] as? [String: Any])?["weight"])

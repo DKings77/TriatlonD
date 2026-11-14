@@ -13,7 +13,12 @@ enum Juego {
         var suma = 0.0
         var peso = 0.0
         if let r = e.readiness.puntuacion { suma += 0.4 * r; peso += 0.4 }
-        if let s = e.sueno.puntuacion { suma += 0.3 * s; peso += 0.3 }
+        if let s = e.sueno.puntuacion {
+            suma += 0.3 * s; peso += 0.3
+        } else if let h = e.sueno.horas, h > 0 {
+            // Sin nota de sueño de Garmin: 8 h o más cuentan 100.
+            suma += 0.3 * min(100, h / 8 * 100); peso += 0.3
+        }
         if let anoche = e.vfc.anocheMs, let media = e.vfc.mediaSemanalMs, media > 0 {
             suma += 0.3 * min(100, anoche / media * 100)
             peso += 0.3
