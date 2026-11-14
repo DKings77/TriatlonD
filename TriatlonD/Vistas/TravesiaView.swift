@@ -35,6 +35,7 @@ enum Travesia {
 struct TravesiaView: View {
     let plan: AlmacenPlan
     let almacen: AlmacenEstado
+    var conCabecera = true
 
     @State private var visible = false
     @State private var jefe: SesionPlan?
@@ -61,11 +62,13 @@ struct TravesiaView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("La Travesía")
-                            .font(.largeTitle.bold())
+                        if conCabecera {
+                            Text("La Travesía")
+                                .font(.largeTitle.bold())
+                        }
                         Text("Región \(regionActual): \(Travesia.nombreRegion(regionActual))")
-                            .font(.subheadline)
-                            .foregroundStyle(Tema.textoSecundario)
+                            .font(conCabecera ? .subheadline : .headline)
+                            .foregroundStyle(conCabecera ? Tema.textoSecundario : Tema.experiencia)
                     }
                     .padding(.bottom, 14)
 

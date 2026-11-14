@@ -10,6 +10,7 @@ import Charts
 struct LesionView: View {
     let almacen: AlmacenEstado
     let plan: AlmacenPlan
+    var conCabecera = true
 
     @State private var dia = Date()
     @State private var registros = DiarioDolor.registros
@@ -28,8 +29,10 @@ struct LesionView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Parte de lesión")
-                        .font(.largeTitle.bold())
+                    if conCabecera {
+                        Text("Parte de lesión")
+                            .font(.largeTitle.bold())
+                    }
                     Text("Fascia plantar y tendón de Aquiles")
                         .font(.subheadline)
                         .foregroundStyle(Tema.textoSecundario)

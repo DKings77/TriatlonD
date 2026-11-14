@@ -105,11 +105,7 @@ struct BaseView: View {
                     }
                 }
 
-                if let historico = almacen.historico {
-                    TarjetaNota(nota: Nota.calcular(historico: historico, pesoKg: estado.pesoKg))
-                }
-
-                TarjetaLogros(logros: Logros.calcular(plan: plan.sesiones, historico: almacen.historico, pesoKg: estado.pesoKg))
+                TarjetaHoyToca(plan: plan, almacen: almacen)
 
                 if let historico = almacen.historico,
                    let parte = Partes.ultimo(plan: plan.sesiones, hechas: historico.sesiones) {
@@ -117,21 +113,6 @@ struct BaseView: View {
                         .id(parte.sesion.id)
                 }
 
-                Tarjeta {
-                    Text("Últimas sesiones")
-                        .font(.headline)
-                    ForEach(estado.actividades) { a in
-                        HStack {
-                            Text(a.nombre ?? "Sesión")
-                                .font(.subheadline)
-                                .lineLimit(1)
-                            Spacer()
-                            Text("\(Int(a.minutos ?? 0))'")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(Tema.experiencia)
-                        }
-                    }
-                }
             }
             .padding(20)
             .animation(.spring(duration: 0.5), value: almacen.novedad)
@@ -184,6 +165,72 @@ struct TarjetaModoBaja: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Tema.alerta.opacity(0.6), lineWidth: 1))
         .onAppear {
             withAnimation(.easeInOut(duration: 0.9).repeatForever()) { latido = true }
+        }
+    }
+}
+
+/// Lo que toca hoy según el plan (o mañana, si hoy ya está todo hecho o es descanso).
+struct TarjetaHoyToca: View {
+    let plan: AlmacenPlan
+    let almacen: AlmacenEstado
+    @State private var elegida: SesionPlan?
+
+    var body: some View {
+        let hoy = Calendario.texto(Date())
+        let manana = Calendario.texto(Date().addingTimeInterval(86400))
+        let cruce = Analisis.cumplimiento(plan: plan.sesiones, hechas: almacen.historico?.sesiones ?? [], hoy: hoy)
+        let deHoy = cruce.filter { $0.sesion.fecha == hoy }
+        let pendientesHoy = deHoy.filter { $0.estado == .pendiente }
+        let mostrar = pendientesHoy.isEmpty ? cruce.filter { $0.sesion.fecha == manana } : deHoy
+        let titulo = !pendientesHoy.isEmpty ? "Hoy toca" : (deHoy.isEmpty ? "Hoy, descanso. Mañana toca" : "Hoy, hecho. Mañana toca")
+        Tarjeta {
+            Label(titulo, systemImage: pendientesHoy.isEmpty ? "moon.stars.fill" : "flag.fill")
+                .font(.headline)
+                .foregroundStyle(pendientesHoy.isEmpty ? Tema.textoSecundario : Tema.turquesa)
+            if mostrar.isEmpty {
+                Text("Nada planificado. Pídele la semana al entrenador en Plan.")
+                    .font(.subheadline)
+                    .foregroundStyle(Tema.textoSecundario)
+            }
+            ForEach(mostrar) { c in
+                Button {
+                    elegida = c.sesion
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: c.estado == .hecha ? "checkmark.circle.fill" : icono(c.sesion.deporte))
+                            .font(.title3)
+                            .foregroundStyle(c.sesion.deporte.color)
+                            .frame(width: 30)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(c.sesion.titulo)
+                                .font(.subheadline.bold())
+                            if let e = c.sesion.estructura {
+                                Text(e)
+                                    .font(.caption)
+                                    .foregroundStyle(Tema.textoSecundario)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(Tema.textoSecundario)
+                    }
+                    .opacity(c.estado == .hecha ? 0.6 : 1)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .sheet(item: $elegida) { sesion in
+            DetalleSesionView(sesion: sesion, plan: plan)
+        }
+    }
+
+    private func icono(_ d: Deporte) -> String {
+        switch d {
+        case .bici: return "bicycle"
+        case .agua: return "figure.pool.swim"
+        case .carrera: return "figure.run"
+        case .fuerza: return "dumbbell.fill"
         }
     }
 }

@@ -9,10 +9,8 @@ import SwiftUI
 import Charts
 
 enum SeccionDatos: String, CaseIterable, Identifiable {
-    case resumen = "Resumen"
     case carga = "Carga"
     case rendimiento = "Rinde"
-    case cuerpo = "Cuerpo"
 
     var id: String { rawValue }
 }
@@ -20,15 +18,20 @@ enum SeccionDatos: String, CaseIterable, Identifiable {
 struct FichaView: View {
     let almacen: AlmacenEstado
     let plan: AlmacenPlan
-    @State private var seccion = SeccionDatos.resumen
+    @State private var seccion = SeccionDatos.carga
 
     private var estado: EstadoDia { almacen.estado }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Datos")
-                    .font(.largeTitle.bold())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Rendimiento")
+                        .font(.largeTitle.bold())
+                    Text("Por qué vas como vas")
+                        .font(.subheadline)
+                        .foregroundStyle(Tema.textoSecundario)
+                }
 
                 Picker("Sección", selection: $seccion) {
                     ForEach(SeccionDatos.allCases) { s in
@@ -39,10 +42,8 @@ struct FichaView: View {
 
                 if let historico = almacen.historico {
                     switch seccion {
-                    case .resumen: resumen(historico)
                     case .carga: carga(historico)
                     case .rendimiento: rendimiento(historico)
-                    case .cuerpo: cuerpo(historico)
                     }
                 } else {
                     MedidorCarga(carga: estado.carga)
@@ -54,7 +55,7 @@ struct FichaView: View {
                                     .font(.subheadline)
                             }
                         } else {
-                            Text("Las gráficas aparecen con datos reales. Añade tu clave de Garmin en Ajustes, desde el engranaje de Base.")
+                            Text("Las gráficas aparecen con datos reales. Añade tu clave de Garmin en Ajustes, desde el engranaje de Hoy.")
                                 .font(.subheadline)
                                 .foregroundStyle(Tema.textoSecundario)
                         }
@@ -70,8 +71,7 @@ struct FichaView: View {
     }
 
     @ViewBuilder
-    private func resumen(_ h: Historico) -> some View {
-        TarjetaNota(nota: Nota.calcular(historico: h, pesoKg: estado.pesoKg), detalle: true)
+    private func carga(_ h: Historico) -> some View {
         let lecturas = Lecturas.todas(h)
         if !lecturas.isEmpty {
             Tarjeta {
@@ -84,12 +84,6 @@ struct FichaView: View {
                 }
             }
         }
-        TarjetaCumplimiento(lista: Analisis.cumplimiento(plan: plan.sesiones, hechas: h.sesiones, hoy: Calendario.texto(Date())))
-        TarjetaConstancia(constancia: Analisis.constancia(h.sesiones, hoy: Date()), hechas: h.sesiones, plan: plan.sesiones)
-    }
-
-    @ViewBuilder
-    private func carga(_ h: Historico) -> some View {
         MedidorCarga(carga: estado.carga)
         if let fr = h.formaYRampa {
             TarjetaForma(forma: fr.forma, rampa: fr.rampa)
@@ -118,18 +112,6 @@ struct FichaView: View {
         }
     }
 
-    @ViewBuilder
-    private func cuerpo(_ h: Historico) -> some View {
-        HStack(spacing: 10) {
-            Metrica(titulo: "Sueño", valor: estado.sueno.horas.map { String(format: "%.1f h", $0) })
-            Metrica(titulo: "Pulso (VFC)", valor: estado.vfc.mediaSemanalMs.map { "\(Int($0)) ms" })
-            Metrica(titulo: "Peso", valor: estado.pesoKg.map { String(format: "%.1f kg", $0) })
-        }
-        GraficaSueno(noches: h.sueno)
-        GraficaVFC(noches: h.vfc)
-        TarjetaRecuperacion(historico: h)
-        GraficaPeso(dias: h.peso)
-    }
 }
 
 // MARK: - Gráficas
@@ -168,7 +150,7 @@ private struct GraficaCarga: View {
 }
 
 /// Horas de sueño de 14 noches. Las barras crecen desde abajo.
-private struct GraficaSueno: View {
+struct GraficaSueno: View {
     let noches: [NocheSueno]
     @State private var avance = 0.0
 
@@ -206,7 +188,7 @@ private struct GraficaSueno: View {
 }
 
 /// Variabilidad del pulso noche a noche y su media semanal.
-private struct GraficaVFC: View {
+struct GraficaVFC: View {
     let noches: [NocheVFC]
     @State private var avance = 0.0
 
@@ -274,7 +256,7 @@ private struct GraficaVolumen: View {
 
 /// Medidor compacto de carga: una regla con cuatro zonas y un marcador que
 /// se desliza hasta tu relación entre la carga de la semana y tu fondo.
-private struct MedidorCarga: View {
+struct MedidorCarga: View {
     let carga: Carga
     @State private var posicion = 0.0
 
@@ -360,7 +342,7 @@ private struct Dato: View {
     }
 }
 
-private struct Metrica: View {
+struct Metrica: View {
     var titulo: String
     var valor: String?
 

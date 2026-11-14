@@ -24,15 +24,17 @@ struct PestanasView: View {
     var body: some View {
         TabView {
             BaseView(almacen: almacen, plan: plan)
-                .tabItem { Label("Base", systemImage: "flame") }
-            TravesiaView(plan: plan, almacen: almacen)
-                .tabItem { Label("Travesía", systemImage: "map") }
+                .tabItem { Label("Hoy", systemImage: "sun.max.fill") }
+            ProgresoView(almacen: almacen, plan: plan)
+                .background(Tema.fondo)
+                .tabItem { Label("Progreso", systemImage: "trophy.fill") }
             SemanaView(plan: plan, almacen: almacen)
                 .tabItem { Label("Plan", systemImage: "calendar") }
-            LesionView(almacen: almacen, plan: plan)
-                .tabItem { Label("Lesión", systemImage: "bandage") }
+            CuerpoView(almacen: almacen, plan: plan)
+                .background(Tema.fondo)
+                .tabItem { Label("Cuerpo", systemImage: "heart.text.square") }
             FichaView(almacen: almacen, plan: plan)
-                .tabItem { Label("Datos", systemImage: "chart.xyaxis.line") }
+                .tabItem { Label("Rendimiento", systemImage: "chart.xyaxis.line") }
         }
         .tint(Tema.turquesa)
         .task {
