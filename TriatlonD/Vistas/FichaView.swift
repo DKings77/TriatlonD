@@ -1,6 +1,6 @@
 // FichaView.swift
 // ------------------------------------------------------------------
-// Datos: los dos depósitos de carga, las gráficas de las últimas
+// Datos: el medidor de carga, las gráficas de las últimas
 // semanas (carga, sueño, pulso y volumen) y los cruces entre ellas.
 // Todo se dibuja animado al entrar.
 // ------------------------------------------------------------------
@@ -19,19 +19,7 @@ struct FichaView: View {
                 Text("Datos")
                     .font(.largeTitle.bold())
 
-                Tarjeta {
-                    Text("Los dos depósitos de carga")
-                        .font(.headline)
-                    HStack(alignment: .bottom, spacing: 14) {
-                        Deposito(titulo: "Esta semana", detalle: "Se llena y se vacía rápido",
-                                 valor: estado.carga.aguda, color: Tema.bici)
-                        Deposito(titulo: "Tu fondo", detalle: "Sube y baja despacio",
-                                 valor: estado.carga.cronica, color: Tema.turquesa)
-                    }
-                    Text(Juego.lecturaCarga(estado.carga))
-                        .font(.footnote)
-                        .foregroundStyle(Tema.textoSecundario)
-                }
+                MedidorCarga(carga: estado.carga)
 
                 HStack(spacing: 10) {
                     Metrica(titulo: "Sueño", valor: estado.sueno.horas.map { String(format: "%.1f h", $0) })
@@ -228,42 +216,91 @@ private struct GraficaVolumen: View {
 
 // MARK: - Piezas
 
-/// Depósito vertical: la altura del relleno es la carga sobre un tope de 600.
-private struct Deposito: View {
-    var titulo: String
-    var detalle: String
-    var valor: Double?
-    var color: Color
-    @State private var lleno = 0.0
+/// Medidor compacto de carga: una regla con cuatro zonas y un marcador que
+/// se desliza hasta tu relación entre la carga de la semana y tu fondo.
+private struct MedidorCarga: View {
+    let carga: Carga
+    @State private var posicion = 0.0
+
+    // La regla va de 0 a 2: baja hasta 0,8, óptima hasta 1,3, alta hasta 1,5 y muy alta después.
+    private let zonas: [(color: Color, parte: Double)] = [
+        (Tema.natacion, 0.40), (Tema.carrera, 0.25), (Tema.experiencia, 0.10), (Tema.alerta, 0.25)
+    ]
 
     var body: some View {
-        VStack(spacing: 6) {
+        Tarjeta {
+            HStack {
+                Text("Carga")
+                    .font(.headline)
+                Spacer()
+                Text(estado.texto)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(estado.color)
+            }
             GeometryReader { geo in
-                ZStack(alignment: .bottom) {
-                    RoundedRectangle(cornerRadius: 12).fill(Tema.pista)
-                    RoundedRectangle(cornerRadius: 12).fill(color)
-                        .frame(height: geo.size.height * lleno)
+                ZStack(alignment: .leading) {
+                    HStack(spacing: 0) {
+                        ForEach(Array(zonas.enumerated()), id: \.offset) { _, zona in
+                            Rectangle()
+                                .fill(zona.color.opacity(0.85))
+                                .frame(width: geo.size.width * zona.parte)
+                        }
+                    }
+                    .frame(height: 10)
+                    .clipShape(Capsule())
+                    Circle()
+                        .fill(Tema.texto)
+                        .overlay(Circle().stroke(Tema.fondo, lineWidth: 3))
+                        .frame(width: 20, height: 20)
+                        .offset(x: (geo.size.width - 20) * posicion)
                 }
+                .frame(height: 20)
             }
-            .frame(height: 120)
-            .onAppear {
-                lleno = 0
-                withAnimation(.spring(duration: 1.1, bounce: 0.35)) { lleno = min((valor ?? 0) / 600, 1) }
+            .frame(height: 20)
+            HStack(spacing: 0) {
+                Dato(titulo: "Esta semana", valor: carga.aguda.map { "\(Int($0))" })
+                Dato(titulo: "Tu fondo", valor: carga.cronica.map { "\(Int($0))" })
+                Dato(titulo: "Relación", valor: carga.relacion.map { String(format: "%.1f", $0) })
             }
-            .onChange(of: valor) { _, nuevo in
-                withAnimation(.spring(duration: 0.8, bounce: 0.3)) { lleno = min((nuevo ?? 0) / 600, 1) }
-            }
-            Text(valor.map { "\(Int($0))" } ?? "Sin datos")
-                .font(.title2.bold())
-                .contentTransition(.numericText())
+            Text(Juego.lecturaCarga(carga))
+                .font(.footnote)
+                .foregroundStyle(Tema.textoSecundario)
+        }
+        .onAppear { mover(a: carga.relacion) }
+        .onChange(of: carga.relacion) { _, nueva in mover(a: nueva) }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func mover(a relacion: Double?) {
+        posicion = 0
+        withAnimation(.spring(duration: 1.1, bounce: 0.3)) {
+            posicion = min(max((relacion ?? 0) / 2, 0), 1)
+        }
+    }
+
+    private var estado: (texto: String, color: Color) {
+        guard let r = carga.relacion else { return ("Sin datos", Tema.textoSecundario) }
+        if r < 0.8 { return ("Baja", Tema.natacion) }
+        if r <= 1.3 { return ("Óptima", Tema.carrera) }
+        if r <= 1.5 { return ("Alta", Tema.experiencia) }
+        return ("Muy alta", Tema.alerta)
+    }
+}
+
+private struct Dato: View {
+    var titulo: String
+    var valor: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
             Text(titulo)
-                .font(.subheadline)
-            Text(detalle)
                 .font(.caption)
                 .foregroundStyle(Tema.textoSecundario)
-                .multilineTextAlignment(.center)
+            Text(valor ?? "Sin datos")
+                .font(.title3.bold())
+                .contentTransition(.numericText())
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

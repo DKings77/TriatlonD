@@ -25,6 +25,18 @@ struct BaseView: View {
                     }
                     Spacer()
                     Button {
+                        Task { await almacen.recargar() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.title2)
+                            .frame(width: 44, height: 44)
+                            .rotationEffect(.degrees(almacen.cargando ? 360 : 0))
+                            .animation(almacen.cargando ? .linear(duration: 1).repeatForever(autoreverses: false) : .default,
+                                       value: almacen.cargando)
+                    }
+                    .disabled(almacen.cargando)
+                    .accessibilityLabel("Actualizar datos")
+                    Button {
                         ajustesVisibles = true
                     } label: {
                         Image(systemName: "gearshape")
@@ -38,6 +50,34 @@ struct BaseView: View {
                     Text(aviso)
                         .font(.footnote)
                         .foregroundStyle(Tema.experiencia)
+                }
+
+                if let hora = almacen.ultimaActualizacion {
+                    Text("Actualizado a las \(hora.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption)
+                        .foregroundStyle(Tema.textoSecundario)
+                }
+
+                if let novedad = almacen.novedad {
+                    HStack(spacing: 10) {
+                        Image(systemName: "star.fill")
+                            .foregroundStyle(Tema.experiencia)
+                        Text(novedad)
+                            .font(.subheadline.bold())
+                        Spacer(minLength: 0)
+                        Button {
+                            withAnimation { almacen.novedad = nil }
+                        } label: {
+                            Image(systemName: "xmark")
+                                .frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel("Cerrar aviso")
+                    }
+                    .padding(.leading, 14)
+                    .background(Tema.superficie)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Tema.experiencia, lineWidth: 1))
+                    .transition(.scale(scale: 0.9).combined(with: .opacity))
                 }
 
                 EscenaCorredor(energia: Juego.energia(estado) ?? 50, notaSueno: estado.sueno.puntuacion)
@@ -72,6 +112,7 @@ struct BaseView: View {
                 }
             }
             .padding(20)
+            .animation(.spring(duration: 0.5), value: almacen.novedad)
         }
         .background(Tema.fondo)
         .foregroundStyle(Tema.texto)
