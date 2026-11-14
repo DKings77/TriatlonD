@@ -40,7 +40,7 @@ struct BaseView: View {
                         .foregroundStyle(Tema.experiencia)
                 }
 
-                EscenaCampamento(energia: Juego.energia(estado) ?? 50, notaSueno: estado.sueno.puntuacion)
+                EscenaCorredor(energia: Juego.energia(estado) ?? 50, notaSueno: estado.sueno.puntuacion)
 
                 Tarjeta {
                     HStack(spacing: 16) {
@@ -48,7 +48,7 @@ struct BaseView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(fraseEnergia)
                                 .font(.headline)
-                            Text("La hoguera crece con tu energía. Sale de tu sueño y tu variabilidad del pulso.")
+                            Text("Tu personaje corre más ligero cuanta más energía tienes. Sale de tu sueño y tu variabilidad del pulso.")
                                 .font(.footnote)
                                 .foregroundStyle(Tema.textoSecundario)
                         }

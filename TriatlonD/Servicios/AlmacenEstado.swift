@@ -13,6 +13,7 @@ final class AlmacenEstado {
     var estado = DatosEjemplo.hoy
     var cargando = false
     var esReal = false
+    var historico: Historico?
     var aviso: String? = "Datos de ejemplo del 13 de noviembre."
 
     private let garmin = ClienteGarmin()
@@ -21,6 +22,7 @@ final class AlmacenEstado {
         guard let clave = Llavero.leer("garminClave"), !clave.isEmpty else {
             estado = DatosEjemplo.hoy
             esReal = false
+            historico = nil
             aviso = "Datos de ejemplo. Añade tu clave de Garmin en Ajustes."
             return
         }
@@ -30,6 +32,7 @@ final class AlmacenEstado {
             estado = try await garmin.estadoDeHoy()
             esReal = true
             aviso = nil
+            historico = try? await garmin.historico()
         } catch {
             aviso = error.localizedDescription
         }

@@ -159,4 +159,96 @@ final class ClienteGarmin {
             actividades: actividades
         )
     }
+
+    // MARK: - Histórico para las gráficas
+
+    private func deporteDe(_ a: [String: Any]) -> String? {
+        let tipo = ((a["activityType"] as? [String: Any])?["typeKey"] as? String ?? "").lowercased()
+        if tipo.contains("ride") || tipo.contains("cycling") || tipo.contains("biking") { return "Bici" }
+        if tipo.contains("run") { return "Carrera" }
+        if tipo.contains("swim") { return "Agua" }
+        if tipo.contains("strength") { return "Fuerza" }
+        return nil
+    }
+
+    /// Cuatro semanas de carga, VFC y volumen, y catorce noches de sueño.
+    func historico() async throws -> Historico {
+        var resultado = Historico()
+        let calendario = Calendar(identifier: .gregorian)
+        let hoyTexto = Self.fecha(Date())
+        guard let hoy = Self.formatoDia.date(from: hoyTexto) else { return resultado }
+        _ = try await obtenerToken()
+
+        // --- Actividades: carga diaria y volumen semanal
+        let lista = (try? await json("/activitylist-service/activities/search/activities?start=0&limit=100") as? [[String: Any]]) ?? []
+        var cargaPorDia: [Int: Double] = [:]          // días atrás -> carga
+        var horasPorSemana: [String: Double] = [:]    // "semanasAtrás|deporte" -> horas
+        let diaSemanaHoy = (calendario.component(.weekday, from: hoy) + 5) % 7   // lunes = 0
+        for a in lista {
+            guard let inicio = a["startTimeLocal"] as? String,
+                  let dia = Self.formatoDia.date(from: String(inicio.prefix(10))) else { continue }
+            let atras = calendario.dateComponents([.day], from: dia, to: hoy).day ?? 999
+            guard atras >= 0, atras < 60 else { continue }
+            if let valor = cargaDe(a) { cargaPorDia[atras, default: 0] += valor }
+            if let deporte = deporteDe(a), let segundos = numero(a["duration"]) {
+                let semanasAtras = (atras + (6 - diaSemanaHoy)) / 7
+                if semanasAtras < 4 {
+                    horasPorSemana["\(semanasAtras)|\(deporte)", default: 0] += segundos / 3600
+                }
+            }
+        }
+        for atras in stride(from: 27, through: 0, by: -1) {
+            var aguda = 0.0
+            var total28 = 0.0
+            for d in atras..<(atras + 28) {
+                let valor = cargaPorDia[d] ?? 0
+                total28 += valor
+                if d < atras + 7 { aguda += valor }
+            }
+            if let fecha = calendario.date(byAdding: .day, value: -atras, to: hoy) {
+                resultado.carga.append(DiaCarga(fecha: fecha, aguda: aguda, cronica: total28 / 4))
+            }
+        }
+        let lunes = calendario.date(byAdding: .day, value: -diaSemanaHoy, to: hoy) ?? hoy
+        for semanasAtras in stride(from: 3, through: 0, by: -1) {
+            guard let inicio = calendario.date(byAdding: .day, value: -7 * semanasAtras, to: lunes) else { continue }
+            for deporte in ["Bici", "Carrera", "Agua", "Fuerza"] {
+                let horas = horasPorSemana["\(semanasAtras)|\(deporte)"] ?? 0
+                resultado.volumen.append(VolumenSemana(inicio: inicio, deporte: deporte, horas: horas))
+            }
+        }
+
+        // --- VFC de 28 días
+        let hace28 = Self.fecha(hoy.addingTimeInterval(-27 * 86400))
+        if let vfc = try? await json("/hrv-service/hrv/daily/\(hace28)/\(hoyTexto)") as? [String: Any],
+           let noches = vfc["hrvSummaries"] as? [[String: Any]] {
+            for n in noches {
+                guard let texto = n["calendarDate"] as? String, let fecha = Self.formatoDia.date(from: texto),
+                      let anoche = numero(n["lastNightAvg"]) else { continue }
+                resultado.vfc.append(NocheVFC(fecha: fecha, anoche: anoche, media: numero(n["weeklyAvg"])))
+            }
+            resultado.vfc.sort { $0.fecha < $1.fecha }
+        }
+
+        // --- Sueño de 14 noches, en paralelo
+        resultado.sueno = await withTaskGroup(of: NocheSueno?.self) { grupo in
+            for i in 0..<14 {
+                let texto = Self.fecha(hoy.addingTimeInterval(-Double(i) * 86400))
+                grupo.addTask { [self] in
+                    guard let s = try? await self.json("/sleep-service/sleep/dailySleep?date=\(texto)") as? [String: Any],
+                          let segundos = self.numero(s["sleepTimeSeconds"]), segundos > 0,
+                          let fecha = Self.formatoDia.date(from: texto) else { return nil }
+                    let notas = s["sleepScores"] as? [String: Any]
+                    let nota = self.numero(notas?["overall"]) ?? self.numero((notas?["overall"] as? [String: Any])?["value"])
+                    return NocheSueno(fecha: fecha, horas: segundos / 3600, nota: nota)
+                }
+            }
+            var noches: [NocheSueno] = []
+            for await noche in grupo {
+                if let noche { noches.append(noche) }
+            }
+            return noches.sorted { $0.fecha < $1.fecha }
+        }
+        return resultado
+    }
 }

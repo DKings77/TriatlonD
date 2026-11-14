@@ -27,11 +27,11 @@ struct PestanasView: View {
             TravesiaView()
                 .tabItem { Label("Travesía", systemImage: "map") }
             SemanaView(plan: plan)
-                .tabItem { Label("Semana", systemImage: "calendar") }
+                .tabItem { Label("Plan", systemImage: "calendar") }
             LesionView()
                 .tabItem { Label("Lesión", systemImage: "bandage") }
-            FichaView(estado: almacen.estado)
-                .tabItem { Label("Ficha", systemImage: "chart.bar") }
+            FichaView(almacen: almacen)
+                .tabItem { Label("Datos", systemImage: "chart.xyaxis.line") }
         }
         .tint(Tema.turquesa)
         .task { await almacen.recargar() }

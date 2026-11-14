@@ -31,6 +31,63 @@ enum Juego {
     }
 }
 
+/// Cruces de datos en lenguaje llano, a partir de las series de las últimas semanas.
+enum Lecturas {
+    private static let formato: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "es_ES")
+        f.dateFormat = "d 'de' MMMM"
+        return f
+    }()
+
+    static func todas(_ h: Historico) -> [String] {
+        var frases: [String] = []
+
+        if let ultimo = h.carga.last, ultimo.cronica > 0 {
+            let relacion = ultimo.aguda / ultimo.cronica
+            let pico = h.carga.max { $0.aguda < $1.aguda }
+            var frase = "Carga: llevas \(Int(ultimo.aguda)) esta semana sobre un fondo de \(Int(ultimo.cronica)), relación \(String(format: "%.1f", relacion))."
+            if let pico, pico.aguda > ultimo.aguda * 1.3 {
+                frase += " Tu pico del mes fue \(Int(pico.aguda)) el \(formato.string(from: pico.fecha))."
+            }
+            frases.append(frase)
+        }
+
+        if let peor = h.sueno.min(by: { $0.horas < $1.horas }), peor.horas < 6 {
+            var frase = "Tu peor noche fue la del \(formato.string(from: peor.fecha)): \(String(format: "%.1f", peor.horas)) h."
+            if let vfc = h.vfc.first(where: { Calendar.current.isDate($0.fecha, inSameDayAs: peor.fecha) }) {
+                frase += " Esa noche tu VFC fue \(Int(vfc.anoche)) ms"
+                if let media = vfc.media { frase += " frente a una media de \(Int(media))" }
+                frase += "."
+            }
+            frases.append(frase)
+        }
+
+        if !h.sueno.isEmpty {
+            let cortas = h.sueno.filter { $0.horas < 7 }.count
+            let media = h.sueno.map(\.horas).reduce(0, +) / Double(h.sueno.count)
+            frases.append("Sueño: media de \(String(format: "%.1f", media)) h en \(h.sueno.count) noches; \(cortas) por debajo de 7 h.")
+        }
+
+        if h.vfc.count >= 14 {
+            let reciente = h.vfc.suffix(7).map(\.anoche).reduce(0, +) / 7
+            let anterior = h.vfc.dropLast(7).suffix(7).map(\.anoche).reduce(0, +) / 7
+            let diferencia = reciente - anterior
+            let sentido = abs(diferencia) < 3 ? "estable" : (diferencia > 0 ? "al alza" : "a la baja")
+            frases.append("VFC: \(Int(reciente)) ms de media esta semana frente a \(Int(anterior)) la anterior, \(sentido).")
+        }
+
+        let semanas = Dictionary(grouping: h.volumen, by: \.inicio).mapValues { $0.map(\.horas).reduce(0, +) }
+        let ordenadas = semanas.keys.sorted()
+        if ordenadas.count >= 2, let actual = semanas[ordenadas[ordenadas.count - 1]],
+           let previa = semanas[ordenadas[ordenadas.count - 2]], previa > 0 {
+            let cambio = (actual - previa) / previa * 100
+            frases.append("Volumen: \(String(format: "%.1f", actual)) h esta semana frente a \(String(format: "%.1f", previa)) h la pasada (\(cambio >= 0 ? "+" : "")\(Int(cambio)) %).")
+        }
+        return frases
+    }
+}
+
 /// Datos reales del 13 de noviembre de 2026, guardados en la app
 /// hasta que se conecte con el servidor del portátil.
 enum DatosEjemplo {
