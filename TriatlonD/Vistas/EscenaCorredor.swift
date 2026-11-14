@@ -31,7 +31,8 @@ struct EscenaCorredor: View {
     private var ilustrado: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { linea in
             let t = linea.date.timeIntervalSinceReferenceDate
-            let ritmo = 6 + 6 * energia / 100            // fotogramas por segundo
+            let pocos = EscenaCorredor.fotogramas.count <= 2
+            let ritmo = (pocos ? 3.0 : 6.0) + (pocos ? 2.0 : 6.0) * energia / 100   // fotogramas por segundo
             let indice = Int(t * ritmo) % EscenaCorredor.fotogramas.count
             ZStack {
                 Canvas { contexto, tamano in
@@ -42,8 +43,9 @@ struct EscenaCorredor: View {
                 Image(uiImage: EscenaCorredor.fotogramas[indice])
                     .resizable()
                     .scaledToFit()
-                    .padding(.top, 30)
-                    .offset(y: CGFloat(sin(t * ritmo * 0.5)) * 3)
+                    .padding(.horizontal, 6)
+                    .padding(.top, 10)
+                    .offset(y: CGFloat(sin(t * ritmo * .pi)) * 2)
             }
         }
         .aspectRatio(350.0 / 400.0, contentMode: .fit)
