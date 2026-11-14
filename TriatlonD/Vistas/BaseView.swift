@@ -97,23 +97,7 @@ struct BaseView: View {
                 }
 
                 if let historico = almacen.historico {
-                    let lista = Analisis.cumplimiento(plan: plan.sesiones, hechas: historico.sesiones, hoy: Calendario.texto(Date()))
-                    let nivel = Analisis.nivel(puntos: Analisis.puntos(lista))
-                    Tarjeta {
-                        HStack {
-                            Text("Nivel \(nivel.numero)")
-                                .font(.title3.bold())
-                                .foregroundStyle(Tema.experiencia)
-                            Spacer()
-                            Text("\(nivel.dentro) / \(nivel.necesario) puntos")
-                                .font(.subheadline)
-                                .foregroundStyle(Tema.textoSecundario)
-                        }
-                        BarraProgreso(valor: Double(nivel.dentro) / Double(nivel.necesario) * 100, color: Tema.experiencia)
-                        Text("Cada sesión del plan que cumples suma puntos. El detalle está en Datos.")
-                            .font(.footnote)
-                            .foregroundStyle(Tema.textoSecundario)
-                    }
+                    TarjetaNota(nota: Nota.calcular(historico: historico, pesoKg: estado.pesoKg))
                 }
 
                 if let historico = almacen.historico,

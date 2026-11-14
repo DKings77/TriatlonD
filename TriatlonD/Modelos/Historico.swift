@@ -49,6 +49,9 @@ struct Historico {
     var bateria: [DiaValor] = []       // Body Battery cargada cada día
     var pulsoReposo: Double?
     var pulsoReposo7: Double?
+    var nadoLargo: [DiaValor] = []      // ritmo por 100 m en sesiones de 1000 m o más
+    var prediccion10k: Double?          // segundos, predicción del reloj
+    var carreraEquivalente: Double?     // segundos, 10 km equivalente de tu mejor carrera
 }
 
 // MARK: - Series añadidas para rendimiento, cuerpo y constancia

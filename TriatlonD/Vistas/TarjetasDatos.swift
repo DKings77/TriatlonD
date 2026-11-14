@@ -23,11 +23,11 @@ struct TarjetaCumplimiento: View {
             HStack(spacing: 16) {
                 AnilloProgreso(valor: Analisis.porcentaje(lista) ?? 0, color: Tema.carrera, etiqueta: "% hecho")
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Nivel \(nivel.numero)")
+                    Text("Constancia · tramo \(nivel.numero)")
                         .font(.title3.bold())
                         .foregroundStyle(Tema.experiencia)
                     BarraProgreso(valor: Double(nivel.dentro) / Double(nivel.necesario) * 100, color: Tema.experiencia)
-                    Text("\(nivel.dentro) de \(nivel.necesario) puntos · \(puntos) en total")
+                    Text("\(nivel.dentro) de \(nivel.necesario) puntos para el siguiente tramo · \(puntos) en total")
                         .font(.caption)
                         .foregroundStyle(Tema.textoSecundario)
                 }
@@ -47,7 +47,7 @@ struct TarjetaCumplimiento: View {
                     Spacer(minLength: 0)
                 }
             }
-            Text("Una sesión cuenta como hecha con el 80 % de su duración. A medias da la mitad de puntos. El nivel cuenta desde que empezó este plan.")
+            Text("Una sesión cuenta como hecha con el 80 % de su duración. A medias da la mitad de puntos. Los puntos miden tu constancia con el plan; tu nivel real es la nota de triatleta.")
                 .font(.caption)
                 .foregroundStyle(Tema.textoSecundario)
         }

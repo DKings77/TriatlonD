@@ -22,6 +22,7 @@ struct AjustesView: View {
     @AppStorage("ref.max") private var maximo = 187
     @AppStorage("ref.pesoObjetivo") private var pesoObjetivo = 82.0
     @AppStorage("ref.fechaPeso") private var fechaPeso = "2027-06-21"
+    @AppStorage("ref.nacimiento") private var nacimiento = "1985-12-09"
     @State private var claveClaude = ""
     @State private var hayClaude = Llavero.leer("claudeClave") != nil
 
@@ -53,6 +54,17 @@ struct AjustesView: View {
                     ), in: Date()..., displayedComponents: .date)
                 } header: {
                     Text("Objetivo de peso")
+                }
+
+                Section {
+                    DatePicker("Nacimiento", selection: Binding(
+                        get: { Calendario.fecha(nacimiento) ?? Date() },
+                        set: { nacimiento = Calendario.texto($0) }
+                    ), in: ...Date(), displayedComponents: .date)
+                } header: {
+                    Text("Categoría de edad")
+                } footer: {
+                    Text("Decide tu categoría (M40 de 40 a 44 años) y la tabla de la nota de triatleta.")
                 }
 
                 Section {

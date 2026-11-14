@@ -193,6 +193,8 @@ enum ContextoIA {
             dato("Pulso en reposo", h.pulsoReposo, " ppm")
             dato("Pulso en reposo, media de 7 días", h.pulsoReposo7, " ppm")
             dato("FTP estimado por sus mejores 20'", h.ftpEstimado, " W")
+            let nota = Nota.calcular(historico: h, pesoKg: estado.pesoKg)
+            lineas.append("- Nota de triatleta (0-100, categoría \(nota.categoria)): " + nota.deportes.map { "\($0.deporte.rawValue) \($0.nota.map { String(Int($0)) } ?? "sin datos") (\($0.marca))" }.joined(separator: ", "))
             let noches = h.sueno.suffix(7).map { String(format: "%.1f", $0.horas) }.joined(separator: ", ")
             if !noches.isEmpty { lineas.append("- Horas de sueño de las últimas noches: \(noches)") }
             let vfc = h.vfc.suffix(7).map { String(Int($0.anoche)) }.joined(separator: ", ")

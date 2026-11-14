@@ -71,6 +71,7 @@ struct FichaView: View {
 
     @ViewBuilder
     private func resumen(_ h: Historico) -> some View {
+        TarjetaNota(nota: Nota.calcular(historico: h, pesoKg: estado.pesoKg), detalle: true)
         let lecturas = Lecturas.todas(h)
         if !lecturas.isEmpty {
             Tarjeta {

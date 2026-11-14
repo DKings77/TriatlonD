@@ -226,7 +226,16 @@ final class ClienteGarmin {
                 }
             }
             if deporte == "Agua", let metros, metros > 0, segundos > 0 {
-                resultado.natacion.append(DiaValor(fecha: dia, valor: segundos / (metros / 100)))
+                // Ritmo nadando: sin los descansos en la pared si Garmin los separa.
+                let enMovimiento = numero(a["movingDuration"]).flatMap { $0 > 0 ? $0 : nil } ?? segundos
+                resultado.natacion.append(DiaValor(fecha: dia, valor: enMovimiento / (metros / 100)))
+                if metros >= 1000 { resultado.nadoLargo.append(DiaValor(fecha: dia, valor: enMovimiento / (metros / 100))) }
+            }
+            // Carreras de 3 km o más, para estimar el 10 km si el reloj no da predicción.
+            if deporte == "Carrera", let metros, metros >= 3000, segundos > 0 {
+                let enMovimiento = numero(a["movingDuration"]).flatMap { $0 > 0 ? $0 : nil } ?? segundos
+                let equivalente = enMovimiento * pow(10000 / metros, 1.06)
+                if equivalente < (resultado.carreraEquivalente ?? .infinity) { resultado.carreraEquivalente = equivalente }
             }
             // Mejores vatios sostenidos, este mes y el anterior.
             let periodo = atras < 28 ? "Últimos 28 días" : (atras < 56 ? "28 días anteriores" : nil)
@@ -315,6 +324,15 @@ final class ClienteGarmin {
         if let resumen = try? await json("/usersummary-service/usersummary/daily?calendarDate=\(hoyTexto)") as? [String: Any] {
             resultado.pulsoReposo = numero(resumen["restingHeartRate"])
             resultado.pulsoReposo7 = numero(resumen["lastSevenDaysAvgRestingHeartRate"])
+        }
+
+        // --- Predicción de 10 km del reloj (la misma que muestra Garmin)
+        if let perfil = try? await json("/userprofile-service/socialProfile") as? [String: Any],
+           let nombre = perfil["displayName"] as? String,
+           let codificado = nombre.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+           let prediccion = try? await json("/metrics-service/metrics/racepredictions/latest/\(codificado)") {
+            let datos = (prediccion as? [String: Any]) ?? (prediccion as? [[String: Any]])?.first ?? [:]
+            if let segundos = numero(datos["time10K"]), segundos > 0 { resultado.prediccion10k = segundos }
         }
 
         // --- Sueño de 14 noches, en paralelo
