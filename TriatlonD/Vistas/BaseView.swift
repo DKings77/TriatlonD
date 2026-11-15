@@ -88,10 +88,10 @@ struct BaseView: View {
                 HStack(alignment: .top, spacing: 12) {
                     EscenaPersonaje(deporte: deporteDeHoy, energia: Juego.energia(estado, historico: almacen.historico) ?? 50, notaSueno: estado.sueno.puntuacion)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 280)
+                        .frame(height: 300)
                     PanelEnergia(estado: estado, historico: almacen.historico, frase: fraseEnergia)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 280)
+                        .frame(height: 300)
                 }
 
                 TarjetaHoyToca(plan: plan, almacen: almacen)
