@@ -9,19 +9,26 @@ import Foundation
 enum Juego {
     /// Energía del día (0-100): 40 % readiness, 30 % sueño, 30 % VFC frente a su media.
     /// Si falta algún dato, se reparte el peso entre los que sí hay.
-    static func energia(_ e: EstadoDia) -> Double? {
+    /// Energía de 0 a 100: sueño, variabilidad del pulso y pulso en reposo a partes
+    /// iguales (y la disposición de Garmin si llega), menos la carga si se dispara.
+    static func energia(_ e: EstadoDia, historico h: Historico? = nil) -> Double? {
         var suma = 0.0
         var peso = 0.0
-        if let r = e.readiness.puntuacion { suma += 0.4 * r; peso += 0.4 }
+        if let r = e.readiness.puntuacion { suma += 0.25 * r; peso += 0.25 }
         if let s = e.sueno.puntuacion {
-            suma += 0.3 * s; peso += 0.3
-        } else if let h = e.sueno.horas, h > 0 {
+            suma += 0.25 * s; peso += 0.25
+        } else if let horas = e.sueno.horas, horas > 0 {
             // Sin nota de sueño de Garmin: 8 h o más cuentan 100.
-            suma += 0.3 * min(100, h / 8 * 100); peso += 0.3
+            suma += 0.25 * min(100, horas / 8 * 100); peso += 0.25
         }
         if let anoche = e.vfc.anocheMs, let media = e.vfc.mediaSemanalMs, media > 0 {
-            suma += 0.3 * min(100, anoche / media * 100)
-            peso += 0.3
+            suma += 0.25 * min(100, anoche / media * 100)
+            peso += 0.25
+        }
+        if let reposo = h?.pulsoReposo, let media = h?.pulsoReposo7, media > 0 {
+            // Cada pulsación por encima de tu media resta 8 puntos.
+            suma += 0.25 * max(0, min(100, 100 - (reposo - media) * 8))
+            peso += 0.25
         }
         guard peso > 0 else { return nil }
         var energia = suma / peso

@@ -86,7 +86,7 @@ struct BaseView: View {
                 }
 
                 HStack(alignment: .top, spacing: 12) {
-                    EscenaPersonaje(deporte: deporteDeHoy, energia: Juego.energia(estado) ?? 50, notaSueno: estado.sueno.puntuacion)
+                    EscenaPersonaje(deporte: deporteDeHoy, energia: Juego.energia(estado, historico: almacen.historico) ?? 50, notaSueno: estado.sueno.puntuacion)
                         .frame(maxWidth: .infinity)
                         .frame(height: 280)
                     PanelEnergia(estado: estado, historico: almacen.historico, frase: fraseEnergia)
@@ -95,6 +95,8 @@ struct BaseView: View {
                 }
 
                 TarjetaHoyToca(plan: plan, almacen: almacen)
+
+                TarjetaMisiones(misiones: Misiones.deHoy(plan: plan.sesiones, historico: almacen.historico, estado: estado))
 
                 if let historico = almacen.historico,
                    let parte = Partes.ultimo(plan: plan.sesiones, hechas: historico.sesiones) {
@@ -130,7 +132,7 @@ struct BaseView: View {
     }
 
     private var fraseEnergia: String {
-        guard let e = Juego.energia(estado) else { return "Sin datos de energía" }
+        guard let e = Juego.energia(estado, historico: almacen.historico) else { return "Sin datos de energía" }
         if e >= 75 { return "Con fuerzas para todo" }
         if e >= 55 { return "Bien, sin excesos" }
         if e >= 35 { return "Hoy, suave" }
@@ -247,7 +249,7 @@ struct PanelEnergia: View {
     let frase: String
     @State private var visible = false
 
-    private var energia: Double { Juego.energia(estado) ?? 0 }
+    private var energia: Double { Juego.energia(estado, historico: historico) ?? 0 }
     private var nivel: Int { Int((energia / 20).rounded(.up)).clamped(0, 5) }
     private var color: Color {
         switch nivel {
@@ -270,12 +272,12 @@ struct PanelEnergia: View {
                     ForEach((1...5).reversed(), id: \.self) { n in
                         RoundedRectangle(cornerRadius: 4)
                             .fill(n <= nivel && visible ? color : Tema.pista)
-                            .frame(width: 34, height: 13)
+                            .frame(width: 34, height: 11)
                             .animation(.spring(duration: 0.4).delay(Double(5 - n) * 0.08), value: visible)
                     }
                 }
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(Juego.energia(estado).map { "\(Int($0))" } ?? "–")
+                    Text(Juego.energia(estado, historico: historico).map { "\(Int($0))" } ?? "–")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .foregroundStyle(color)
                     Text("Nivel \(nivel) de 5")
@@ -290,6 +292,7 @@ struct PanelEnergia: View {
             VStack(alignment: .leading, spacing: 3) {
                 fila("moon.zzz.fill", estado.sueno.horas.map { String(format: "%.1f h", $0) } ?? "–")
                 fila("waveform.path.ecg", estado.vfc.anocheMs.map { "\(Int($0)) ms" } ?? "–")
+                fila("heart.fill", historico?.pulsoReposo.map { "reposo \(Int($0)) ppm" } ?? "–")
                 fila("gauge.with.dots.needle.50percent", estado.carga.relacion.map { String(format: "carga %.1f", $0) } ?? "–")
             }
             Spacer(minLength: 0)
@@ -324,4 +327,44 @@ struct PanelEnergia: View {
 
 private extension Int {
     func clamped(_ a: Int, _ b: Int) -> Int { Swift.min(Swift.max(self, a), b) }
+}
+
+/// Misiones del día: pequeñas, y premian también descansar y dormir.
+struct TarjetaMisiones: View {
+    let misiones: [Mision]
+
+    var body: some View {
+        Tarjeta {
+            HStack {
+                Label("Misiones de hoy", systemImage: "target")
+                    .font(.headline)
+                Spacer()
+                Text("\(misiones.filter(\.cumplida).count)/\(misiones.count)")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(Tema.experiencia)
+            }
+            ForEach(misiones) { m in
+                HStack(spacing: 12) {
+                    Image(systemName: m.cumplida ? "checkmark.circle.fill" : m.icono)
+                        .font(.title3)
+                        .foregroundStyle(m.cumplida ? Tema.carrera : Tema.textoSecundario)
+                        .frame(width: 28)
+                        .contentTransition(.symbolEffect(.replace))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(m.titulo)
+                            .font(.subheadline.bold())
+                            .strikethrough(m.cumplida, color: Tema.textoSecundario)
+                        Text(m.detalle)
+                            .font(.caption)
+                            .foregroundStyle(Tema.textoSecundario)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Text("+\(m.puntos)")
+                        .font(.caption.bold())
+                        .foregroundStyle(m.cumplida ? Tema.experiencia : Tema.textoSecundario)
+                }
+            }
+        }
+    }
 }

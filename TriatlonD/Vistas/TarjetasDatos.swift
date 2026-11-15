@@ -15,7 +15,7 @@ struct TarjetaCumplimiento: View {
     let lista: [Cumplimiento]
 
     var body: some View {
-        let puntos = Analisis.puntos(lista)
+        let puntos = Analisis.puntos(lista) + Misiones.puntosTotales
         let nivel = Analisis.nivel(puntos: puntos)
         Tarjeta {
             Text("Planificado frente a hecho")
@@ -47,7 +47,7 @@ struct TarjetaCumplimiento: View {
                     Spacer(minLength: 0)
                 }
             }
-            Text("Una sesión cuenta como hecha con el 80 % de su duración. A medias da la mitad de puntos. Los puntos miden tu constancia con el plan; tu nivel real es la nota de triatleta.")
+            Text("Una sesión cuenta como hecha con el 80 % de su duración. A medias da la mitad de puntos, y las misiones diarias suman aparte. Los puntos miden tu constancia con el plan; tu nivel real es la nota de triatleta.")
                 .font(.caption)
                 .foregroundStyle(Tema.textoSecundario)
         }
@@ -93,6 +93,7 @@ struct TarjetaConstancia: View {
     let plan: [SesionPlan]
     @State private var visible = false
     @State private var elegido: String?
+    @State private var refresco = 0
 
     private let calendario = Calendar(identifier: .gregorian)
     private var hoy: Date { calendario.startOfDay(for: Date()) }
@@ -149,11 +150,12 @@ struct TarjetaConstancia: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
             HStack(spacing: 0) {
-                DatoSimple(titulo: "Racha actual", valor: "\(constancia.rachaActual) días")
-                DatoSimple(titulo: "Mejor racha", valor: "\(constancia.mejorRacha) días")
+                let c = refresco >= 0 ? Analisis.constancia(hechas, hoy: Date(), plan: plan) : constancia
+                DatoSimple(titulo: "Racha actual", valor: "\(c.rachaActual) días")
+                DatoSimple(titulo: "Mejor racha", valor: "\(c.mejorRacha) días")
                 DatoSimple(titulo: "Días entrenados", valor: "\(diasEntrenados) de \(diasPasados)")
             }
-            Text("La racha cuenta días cumpliendo: entrenando, o descansando cuando el plan lo dice. Cada casilla es un día, de lunes a domingo. Los iconos son lo que entrenaste; cuanto más intenso el fondo, más tiempo. Una X roja es una sesión del plan que no se hizo; los iconos con borde son lo que queda por hacer. Toca un día para ver el detalle.")
+            Text("La racha cuenta días cumpliendo: entrenando, o descansando cuando el plan lo dice. Cada casilla es un día, de lunes a domingo. Los iconos son lo que entrenaste; cuanto más intenso el fondo, más tiempo. Una X roja es una sesión del plan que no se hizo (con el comodín, un escudo salva la racha); los iconos con borde son lo que queda por hacer. Toca un día para ver el detalle.")
                 .font(.caption)
                 .foregroundStyle(Tema.textoSecundario)
         }
@@ -213,6 +215,10 @@ struct TarjetaConstancia: View {
                                 .font(.system(size: 10))
                                 .foregroundStyle(d.color.opacity(0.55))
                         }
+                    } else if Comodines.usados.contains(texto) {
+                        Image(systemName: "shield.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Tema.experiencia)
                     } else if !saltadas.isEmpty {
                         Image(systemName: "xmark")
                             .font(.system(size: 11, weight: .bold))
@@ -263,6 +269,29 @@ struct TarjetaConstancia: View {
                 Text(texto > hoyTexto ? "Nada planificado." : "Descanso.")
                     .font(.caption)
                     .foregroundStyle(Tema.textoSecundario)
+            }
+            if texto < hoyTexto && delDia.isEmpty && !planDia.isEmpty {
+                if Comodines.usados.contains(texto) {
+                    Button("Quitar el comodín de este día") {
+                        Comodines.quitar(texto)
+                        refresco += 1
+                    }
+                    .font(.caption.bold())
+                    .foregroundStyle(Tema.textoSecundario)
+                } else if Comodines.disponible {
+                    Button {
+                        Comodines.usar(texto)
+                        refresco += 1
+                    } label: {
+                        Label("Usar comodín: salva la racha este día", systemImage: "shield.fill")
+                            .font(.caption.bold())
+                            .foregroundStyle(Tema.experiencia)
+                    }
+                } else {
+                    Text("Comodín ya usado este mes (hay uno cada 28 días).")
+                        .font(.caption)
+                        .foregroundStyle(Tema.textoSecundario)
+                }
             }
             ForEach(delDia) { s in
                 HStack(spacing: 8) {

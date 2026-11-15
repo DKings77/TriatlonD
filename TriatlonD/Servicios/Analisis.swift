@@ -51,12 +51,33 @@ enum Analisis {
         return total > 0 ? total : nil
     }
 
-    /// Cruza cada sesión del plan con lo entrenado ese día en ese deporte.
+    /// Cruza cada sesión del plan con lo entrenado ese día en ese deporte. Si ese día no
+    /// hay nada, acepta una sesión del mismo deporte hecha un día antes o después que no
+    /// corresponda a otra sesión del plan (entrenos cambiados de día sin moverlos en la app).
     static func cumplimiento(plan: [SesionPlan], hechas: [SesionHecha], hoy: String) -> [Cumplimiento] {
-        plan.sorted { ($0.fecha, $0.id) < ($1.fecha, $1.id) }.map { sesion in
-            let delDia = hechas.filter { $0.dia == sesion.fecha && $0.deporte == sesion.deporte.rawValue }
+        let ordenado = plan.sorted { ($0.fecha, $0.id) < ($1.fecha, $1.id) }
+        var usadas = Set<Int>()
+        var asignadas: [String: [SesionHecha]] = [:]
+        // 1. Mismo día
+        for sesion in ordenado {
+            let delDia = hechas.filter { $0.dia == sesion.fecha && $0.deporte == sesion.deporte.rawValue && !usadas.contains($0.id) }
+            if !delDia.isEmpty {
+                asignadas[sesion.id] = delDia
+                delDia.forEach { usadas.insert($0.id) }
+            }
+        }
+        // 2. Un día antes o después, solo con lo que no se ha asignado
+        for sesion in ordenado where asignadas[sesion.id] == nil {
+            guard let fecha = Calendario.fecha(sesion.fecha) else { continue }
+            let vecinos = [-1, 1].map { Calendario.texto(fecha.addingTimeInterval(Double($0) * 86400)) }
+            if let otra = hechas.first(where: { vecinos.contains($0.dia) && $0.deporte == sesion.deporte.rawValue && !usadas.contains($0.id) }) {
+                asignadas[sesion.id] = [otra]
+                usadas.insert(otra.id)
+            }
+        }
+        return ordenado.map { sesion in
             let previsto = minutosPlan(sesion)
-            guard !delDia.isEmpty else {
+            guard let delDia = asignadas[sesion.id] else {
                 return Cumplimiento(sesion: sesion, estado: sesion.fecha < hoy ? .saltada : .pendiente,
                                     minutosHechos: nil, minutosPlan: previsto)
             }
@@ -112,7 +133,7 @@ enum Analisis {
             guard let fecha = calendario.date(byAdding: .day, value: -atras, to: hoy) else { continue }
             let texto = Calendario.texto(fecha)
             let entrenado = conEntreno.contains(texto)
-            let descansoPlanificado = texto >= inicioPlan && !conPlan.contains(texto)
+            let descansoPlanificado = (texto >= inicioPlan && !conPlan.contains(texto)) || Comodines.usados.contains(texto)
             if atras < 35 { dias.append((fecha, entrenado)) }
             cumple.append(entrenado || descansoPlanificado)
         }

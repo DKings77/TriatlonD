@@ -153,6 +153,8 @@ enum Nota {
         let hace30 = Calendario.texto(Date().addingTimeInterval(-30 * 86400))
         let anteriores = historia.keys.filter { $0 <= hace30 }.sorted()
         if let clave = anteriores.last { return historia[clave] ?? [:] }
-        return historia.keys.sorted().first.flatMap { $0 < Calendario.texto(Date()) ? historia[$0] : nil } ?? [:]
+        // Sin un mes de historia, se compara con lo más antiguo solo si tiene tres semanas.
+        let hace21 = Calendario.texto(Date().addingTimeInterval(-21 * 86400))
+        return historia.keys.sorted().first.flatMap { $0 <= hace21 ? historia[$0] : nil } ?? [:]
     }
 }
