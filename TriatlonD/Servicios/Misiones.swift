@@ -54,7 +54,9 @@ enum Misiones {
     private static func registrar(_ ids: [String], dia: String) {
         var todas = UserDefaults.standard.dictionary(forKey: clave) as? [String: [String]] ?? [:]
         let previas = Set(todas[dia] ?? [])
-        todas[dia] = Array(previas.union(ids)).sorted()
+        let nuevas = previas.union(ids)
+        guard nuevas != previas else { return }
+        todas[dia] = Array(nuevas).sorted()
         UserDefaults.standard.set(todas, forKey: clave)
     }
 

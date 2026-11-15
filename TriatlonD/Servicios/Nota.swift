@@ -146,10 +146,12 @@ enum Nota {
         var hoy: [String: Double] = [:]
         for d in n.deportes { if let nota = d.nota { hoy[d.deporte.rawValue] = nota } }
         if let g = n.global { hoy["Global"] = g }
-        historia[Calendario.texto(Date())] = hoy
-        let limite = Calendario.texto(Date().addingTimeInterval(-400 * 86400))
-        historia = historia.filter { $0.key >= limite }
-        UserDefaults.standard.set(historia, forKey: claveHistoria)
+        if historia[Calendario.texto(Date())] != hoy {
+            historia[Calendario.texto(Date())] = hoy
+            let limite = Calendario.texto(Date().addingTimeInterval(-400 * 86400))
+            historia = historia.filter { $0.key >= limite }
+            UserDefaults.standard.set(historia, forKey: claveHistoria)
+        }
         let hace30 = Calendario.texto(Date().addingTimeInterval(-30 * 86400))
         let anteriores = historia.keys.filter { $0 <= hace30 }.sorted()
         if let clave = anteriores.last { return historia[clave] ?? [:] }

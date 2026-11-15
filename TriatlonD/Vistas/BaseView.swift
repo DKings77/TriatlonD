@@ -9,7 +9,7 @@ import SwiftUI
 struct BaseView: View {
     let almacen: AlmacenEstado
     let plan: AlmacenPlan
-    @AppStorage("sensaciones.v1") private var sensacionesGuardadas = Data()
+    @State private var refrescoMisiones = 0
     @State private var ajustesVisibles = false
 
     private var estado: EstadoDia { almacen.estado }
@@ -97,13 +97,12 @@ struct BaseView: View {
 
                 TarjetaHoyToca(plan: plan, almacen: almacen)
 
-                // Leer lo guardado hace que las misiones se recalculen al apuntar sensaciones.
-                TarjetaMisiones(misiones: sensacionesGuardadas.isEmpty || true
-                    ? Misiones.deHoy(plan: plan.sesiones, historico: almacen.historico, estado: estado) : [])
+                TarjetaMisiones(misiones: Misiones.deHoy(plan: plan.sesiones, historico: almacen.historico, estado: estado))
+                    .id(refrescoMisiones)
 
                 if let historico = almacen.historico,
                    let parte = Partes.ultimo(plan: plan.sesiones, hechas: historico.sesiones) {
-                    TarjetaParte(parte: parte)
+                    TarjetaParte(parte: parte, alGuardar: { refrescoMisiones += 1 })
                         .id(parte.sesion.id)
                 }
 

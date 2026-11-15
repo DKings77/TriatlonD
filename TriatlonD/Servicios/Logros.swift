@@ -69,7 +69,9 @@ enum Logros {
             if fechas[lista[i].id] == nil { fechas[lista[i].id] = guardadas == nil ? "antes" : Calendario.texto(Date()) }
             lista[i].fecha = fechas[lista[i].id]
         }
-        UserDefaults.standard.set(fechas, forKey: clave)
+        if fechas != (guardadas ?? [:]) || guardadas == nil {
+            UserDefaults.standard.set(fechas, forKey: clave)
+        }
         return lista
     }
 

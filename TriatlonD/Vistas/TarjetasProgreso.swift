@@ -8,6 +8,7 @@ import SwiftUI
 /// Previsto frente a hecho del último entreno, con los puntos ganados.
 struct TarjetaParte: View {
     let parte: Parte
+    var alGuardar: () -> Void = {}
     @State private var sensacion = Sensacion(dia: "", deporte: "")
     @State private var puntosVisibles = 0
     @State private var aparecido = false
@@ -64,9 +65,9 @@ struct TarjetaParte: View {
                     .foregroundStyle(Tema.alerta)
             }
         }
-        .onChange(of: sensacion.esfuerzo) { _, _ in Sensaciones.guardar(sensacion) }
-        .onChange(of: sensacion.animo) { _, _ in Sensaciones.guardar(sensacion) }
-        .onChange(of: sensacion.dolor) { _, _ in Sensaciones.guardar(sensacion) }
+        .onChange(of: sensacion.esfuerzo) { _, _ in guardar() }
+        .onChange(of: sensacion.animo) { _, _ in guardar() }
+        .onChange(of: sensacion.dolor) { _, _ in guardar() }
         .onAppear {
             sensacion = Sensaciones.de(dia: parte.sesion.fecha, deporte: parte.sesion.deporte)
             if parte.sesion.tipo == "Run", sensacion.dolor == nil {
@@ -76,6 +77,12 @@ struct TarjetaParte: View {
             withAnimation(.easeOut(duration: 1.0)) { aparecido = true }
             withAnimation(.spring(duration: 1.2).delay(0.3)) { puntosVisibles = parte.puntos }
         }
+    }
+
+    private func guardar() {
+        guard !sensacion.dia.isEmpty else { return }
+        Sensaciones.guardar(sensacion)
+        alGuardar()
     }
 
     private var lectura: String {
