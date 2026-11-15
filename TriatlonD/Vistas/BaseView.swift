@@ -91,7 +91,7 @@ struct BaseView: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 300)
                     PanelEnergia(estado: estado, historico: almacen.historico, frase: fraseEnergia)
-                        .frame(maxWidth: .infinity)
+                        .frame(width: 160)
                         .frame(height: 300)
                 }
 

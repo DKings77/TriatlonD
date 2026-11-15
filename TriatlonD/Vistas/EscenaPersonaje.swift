@@ -37,20 +37,13 @@ struct EscenaPersonaje: View {
 
     /// Ilustración fija sobre un fondo suave del color del deporte.
     private func ilustrada(_ imagen: UIImage) -> some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             LinearGradient(colors: [color.opacity(0.45), Tema.superficie],
                            startPoint: .top, endPoint: .bottom)
-            Ellipse()
-                .fill(Color.black.opacity(0.25))
-                .frame(height: 14)
-                .padding(.horizontal, 30)
-                .padding(.bottom, 8)
             Image(uiImage: imagen)
                 .resizable()
                 .scaledToFit()
-                .padding(.horizontal, 6)
-                .padding(.top, 10)
-                .padding(.bottom, 6)
+                .padding(8)
                 .saturation(energia < 35 ? 0.75 : 1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
