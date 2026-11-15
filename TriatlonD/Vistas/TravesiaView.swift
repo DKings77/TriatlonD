@@ -314,6 +314,8 @@ struct ResultadoFTPView: View {
     @AppStorage("ref.ftp") private var ftpGuardado = 200.0
     @State private var ftp = 200.0
     @State private var guardado = false
+    @State private var enIntervals: String?
+    @State private var enviando = false
 
     private var peso: Double { almacen.estado.pesoKg ?? almacen.historico?.peso.last?.valor ?? 88 }
     private var factor: Double { Nota.factor(edad: Nota.categoria(Nota.edad()).edadTabla) }
@@ -369,7 +371,30 @@ struct ResultadoFTPView: View {
                 }
                 .disabled(guardado)
                 if guardado {
-                    Text("Cámbialo también en Garmin, Rouvy e intervals.icu, o pídemelo: los entrenos van en % del FTP y cada sitio usa el suyo.")
+                    Button {
+                        Task {
+                            enviando = true
+                            do {
+                                _ = try await ClienteIntervals().actualizarFTP(Int(ftp))
+                                enIntervals = "Cambiado en intervals.icu: los entrenos que envíes ya van con \(Int(ftp)) W."
+                            } catch {
+                                enIntervals = error.localizedDescription
+                            }
+                            enviando = false
+                        }
+                    } label: {
+                        Text(enviando ? "Cambiando…" : "Cambiarlo también en intervals.icu")
+                            .font(.subheadline.bold())
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(Tema.superficie)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .disabled(enviando || enIntervals?.hasPrefix("Cambiado") == true)
+                    if let enIntervals {
+                        Text(enIntervals)
+                            .font(.caption)
+                    }
+                    Text("En Garmin Connect y en Rouvy cámbialo a mano en su perfil, o pídemelo y lo hago yo en Garmin.")
                         .font(.caption)
                         .foregroundStyle(Tema.textoSecundario)
                 }

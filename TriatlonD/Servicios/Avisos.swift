@@ -22,9 +22,27 @@ enum Avisos {
     static func reprogramar(_ sesiones: [SesionPlan]) {
         let centro = UNUserNotificationCenter.current()
         centro.getPendingNotificationRequests { pendientes in
-            centro.removePendingNotificationRequests(withIdentifiers: pendientes.map(\.identifier).filter { $0.hasPrefix("vispera-") })
+            centro.removePendingNotificationRequests(withIdentifiers: pendientes.map(\.identifier)
+                .filter { $0.hasPrefix("vispera-") || $0.hasPrefix("peso-") })
             guard activos else { return }
             let calendario = Calendar(identifier: .gregorian)
+            // Pesarse: el primer viernes de cada mes, a las 8:15, los próximos tres meses.
+            for meses in 0...3 {
+                guard let mes = calendario.date(byAdding: .month, value: meses, to: Date()),
+                      let primero = calendario.date(from: calendario.dateComponents([.year, .month], from: mes)) else { continue }
+                let diaSemana = calendario.component(.weekday, from: primero)   // 1 domingo … 6 viernes
+                let hastaViernes = (6 - diaSemana + 7) % 7
+                guard let viernes = calendario.date(byAdding: .day, value: hastaViernes, to: primero),
+                      let disparo = calendario.date(bySettingHour: 8, minute: 15, second: 0, of: viernes),
+                      disparo > Date() else { continue }
+                let contenido = UNMutableNotificationContent()
+                contenido.title = "Primer viernes del mes"
+                contenido.body = "Toca pesarse. Apúntalo en Garmin Connect y la app lo leerá."
+                contenido.sound = .default
+                let partes = calendario.dateComponents([.year, .month, .day, .hour, .minute], from: disparo)
+                centro.add(UNNotificationRequest(identifier: "peso-\(Calendario.texto(viernes))", content: contenido,
+                                                 trigger: UNCalendarNotificationTrigger(dateMatching: partes, repeats: false)))
+            }
             let hoy = calendario.startOfDay(for: Date())
             for dias in 1...7 {
                 guard let manana = calendario.date(byAdding: .day, value: dias, to: hoy) else { continue }

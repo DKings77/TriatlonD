@@ -194,6 +194,13 @@ enum ContextoIA {
         } else {
             lineas.append("- Dolor en las últimas carreras (0-10): " + diario.map { "\($0.dia) \($0.valor)" }.joined(separator: ", "))
         }
+        let limiteSens = Calendario.texto(Date().addingTimeInterval(-21 * 86400))
+        let sens = Sensaciones.todas.filter { $0.dia >= limiteSens }
+        if !sens.isEmpty {
+            lineas.append("- Sensaciones tras los entrenos (0-10): " + sens.map { s in
+                "\(s.dia) \(s.deporte): esfuerzo \(s.esfuerzo.map(String.init) ?? "-"), ánimo \(s.animo.map(String.init) ?? "-"), molestias \(s.dolor.map(String.init) ?? "-")"
+            }.joined(separator: "; "))
+        }
         let escalera = Escalera.calcular(plan: plan, hechas: historico?.sesiones ?? [])
         lineas.append("- Escalera de carrera: peldaño actual \(escalera.actual)' (\(escalera.validas) de 2 carreras válidas)")
 

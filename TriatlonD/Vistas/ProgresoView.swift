@@ -41,7 +41,7 @@ struct ProgresoView: View {
                     if let h = almacen.historico {
                         TarjetaNota(nota: Nota.calcular(historico: h, pesoKg: almacen.estado.pesoKg), detalle: true)
                         TarjetaLogros(logros: Logros.calcular(plan: plan.sesiones, historico: h, pesoKg: almacen.estado.pesoKg))
-                        TarjetaConstancia(constancia: Analisis.constancia(h.sesiones, hoy: Date()), hechas: h.sesiones, plan: plan.sesiones)
+                        TarjetaConstancia(constancia: Analisis.constancia(h.sesiones, hoy: Date(), plan: plan.sesiones), hechas: h.sesiones, plan: plan.sesiones)
                         TarjetaCumplimiento(lista: Analisis.cumplimiento(plan: plan.sesiones, hechas: h.sesiones, hoy: Calendario.texto(Date())))
                     } else {
                         Tarjeta {

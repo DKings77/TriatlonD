@@ -11,7 +11,7 @@ import SwiftUI
 
 enum Copia {
     private static let claves = [
-        "plan.v1", "plan.borrar.v1", "dolor.diario.v1", "nota.historia.v1",
+        "plan.v1", "plan.borrar.v1", "dolor.diario.v1", "nota.historia.v1", "sensaciones.v1", "logros.v1", "gasto.v1",
         "dolorUltimaCarrera", "ultimaSesionVista",
         "ref.ftp", "ref.z1", "ref.z2", "ref.z3", "ref.z4", "ref.z5", "ref.max",
         "ref.pesoObjetivo", "ref.fechaPeso", "ref.nacimiento"

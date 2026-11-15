@@ -48,6 +48,25 @@ final class ClienteIntervals {
         return datos
     }
 
+    /// Cambia el FTP de bici (interior y exterior) en intervals.icu.
+    func actualizarFTP(_ vatios: Int) async throws -> Int {
+        let datos = try await peticion("/sport-settings")
+        guard let lista = try JSONSerialization.jsonObject(with: datos) as? [[String: Any]] else {
+            throw ErrorIntervals(mensaje: "No he podido leer tus ajustes de intervals.icu.")
+        }
+        var cambiados = 0
+        for ajuste in lista {
+            let tipos = ajuste["types"] as? [String] ?? []
+            guard tipos.contains(where: { $0.contains("Ride") }),
+                  let id = (ajuste["id"] as? NSNumber)?.intValue else { continue }
+            let cuerpo = try JSONSerialization.data(withJSONObject: ["ftp": vatios, "indoor_ftp": vatios])
+            _ = try await peticion("/sport-settings/\(id)", metodo: "PUT", cuerpo: cuerpo)
+            cambiados += 1
+        }
+        guard cambiados > 0 else { throw ErrorIntervals(mensaje: "No he encontrado los ajustes de bici en intervals.icu.") }
+        return cambiados
+    }
+
     /// Borra eventos del calendario. Devuelve los que no se han podido borrar.
     func borrar(_ ids: [Int]) async throws -> [Int] {
         var quedan: [Int] = []

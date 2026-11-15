@@ -153,7 +153,7 @@ struct TarjetaConstancia: View {
                 DatoSimple(titulo: "Mejor racha", valor: "\(constancia.mejorRacha) días")
                 DatoSimple(titulo: "Días entrenados", valor: "\(diasEntrenados) de \(diasPasados)")
             }
-            Text("Cada casilla es un día, de lunes a domingo. Los iconos son lo que entrenaste; cuanto más intenso el fondo, más tiempo. Una X roja es una sesión del plan que no se hizo; los iconos con borde son lo que queda por hacer. Toca un día para ver el detalle.")
+            Text("La racha cuenta días cumpliendo: entrenando, o descansando cuando el plan lo dice. Cada casilla es un día, de lunes a domingo. Los iconos son lo que entrenaste; cuanto más intenso el fondo, más tiempo. Una X roja es una sesión del plan que no se hizo; los iconos con borde son lo que queda por hacer. Toca un día para ver el detalle.")
                 .font(.caption)
                 .foregroundStyle(Tema.textoSecundario)
         }

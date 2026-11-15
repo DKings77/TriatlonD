@@ -102,6 +102,27 @@ struct LesionView: View {
                     }
                 }
 
+                let otras = Sensaciones.todas.filter { $0.deporte != Deporte.carrera.rawValue && ($0.dolor ?? 0) > 0 }.suffix(6)
+                if !otras.isEmpty {
+                    Tarjeta {
+                        Text("Molestias en otros deportes")
+                            .font(.headline)
+                        ForEach(Array(otras)) { s in
+                            HStack {
+                                Text("\(Calendario.etiqueta(s.dia)) · \(s.deporte)")
+                                    .font(.subheadline)
+                                Spacer()
+                                Text("\(s.dolor ?? 0)/10")
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(color(s.dolor ?? 0))
+                            }
+                        }
+                        Text("Se apuntan en el parte de cada entreno, en Hoy.")
+                            .font(.caption)
+                            .foregroundStyle(Tema.textoSecundario)
+                    }
+                }
+
                 Tarjeta {
                     Text("Escalera de vuelta a correr")
                         .font(.headline)

@@ -22,7 +22,7 @@ enum Logros {
         let hechas = h?.sesiones ?? []
         let cruce = Analisis.cumplimiento(plan: plan, hechas: hechas, hoy: Calendario.texto(Date()))
         let cumplidas = cruce.filter { $0.estado == .hecha }.count
-        let racha = Analisis.constancia(hechas, hoy: Date()).mejorRacha
+        let racha = Analisis.constancia(hechas, hoy: Date(), plan: plan).mejorRacha
         let pesos = (h?.peso.map(\.valor) ?? []) + [pesoKg].compactMap { $0 }
         let minimo = pesos.min() ?? 99
         let escalera = Escalera.calcular(plan: plan, hechas: hechas)

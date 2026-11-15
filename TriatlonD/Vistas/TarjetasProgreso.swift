@@ -8,6 +8,7 @@ import SwiftUI
 /// Previsto frente a hecho del último entreno, con los puntos ganados.
 struct TarjetaParte: View {
     let parte: Parte
+    @State private var sensacion = Sensacion(dia: "", deporte: "")
     @State private var puntosVisibles = 0
     @State private var aparecido = false
 
@@ -48,8 +49,29 @@ struct TarjetaParte: View {
             Text(lectura)
                 .font(.footnote)
                 .foregroundStyle(Tema.textoSecundario)
+
+            Divider().overlay(Tema.pista)
+            Text("¿Cómo te ha ido?")
+                .font(.subheadline.bold())
+            SelectorDiez(titulo: "Esfuerzo", extremos: ("muy fácil", "al límite"), valor: $sensacion.esfuerzo, color: Tema.bici)
+            SelectorDiez(titulo: "Ánimo", extremos: ("por los suelos", "a tope"), valor: $sensacion.animo, color: Tema.turquesa)
+            SelectorDiez(titulo: "Molestias", extremos: ("nada", "no puedo"), valor: $sensacion.dolor, color: Tema.alerta)
+            if (sensacion.dolor ?? 0) >= 4 {
+                Text(parte.sesion.tipo == "Run"
+                     ? "Con 4 o más: la próxima carrera pasa a bici o piscina."
+                     : "Con 4 o más, coméntalo al entrenador en la revisión semanal.")
+                    .font(.caption)
+                    .foregroundStyle(Tema.alerta)
+            }
         }
+        .onChange(of: sensacion.esfuerzo) { _, _ in Sensaciones.guardar(sensacion) }
+        .onChange(of: sensacion.animo) { _, _ in Sensaciones.guardar(sensacion) }
+        .onChange(of: sensacion.dolor) { _, _ in Sensaciones.guardar(sensacion) }
         .onAppear {
+            sensacion = Sensaciones.de(dia: parte.sesion.fecha, deporte: parte.sesion.deporte)
+            if parte.sesion.tipo == "Run", sensacion.dolor == nil {
+                sensacion.dolor = DiarioDolor.valor(dia: parte.sesion.fecha)
+            }
             guard !aparecido else { return }
             withAnimation(.easeOut(duration: 1.0)) { aparecido = true }
             withAnimation(.spring(duration: 1.2).delay(0.3)) { puntosVisibles = parte.puntos }
@@ -156,4 +178,48 @@ struct CabeceraSemana: View {
     }
 
     private var orden: [Deporte] { [.bici, .agua, .carrera, .fuerza] }
+}
+
+/// Fila de once botones, del 0 al 10.
+struct SelectorDiez: View {
+    let titulo: String
+    let extremos: (String, String)
+    @Binding var valor: Int?
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(titulo)
+                    .font(.caption.bold())
+                Spacer()
+                Text(valor.map { "\($0)" } ?? "sin apuntar")
+                    .font(.caption.bold())
+                    .foregroundStyle(valor == nil ? Tema.textoSecundario : color)
+            }
+            HStack(spacing: 3) {
+                ForEach(0...10, id: \.self) { n in
+                    Button {
+                        withAnimation(.spring(duration: 0.25)) { valor = (valor == n ? nil : n) }
+                    } label: {
+                        Text("\(n)")
+                            .font(.caption2.bold())
+                            .frame(maxWidth: .infinity, minHeight: 28)
+                            .background(valor.map { n <= $0 } == true ? color.opacity(0.25 + Double(n) * 0.065) : Tema.pista)
+                            .foregroundStyle(valor == n ? Tema.fondo : Tema.texto)
+                            .background(valor == n ? color : .clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            HStack {
+                Text(extremos.0)
+                Spacer()
+                Text(extremos.1)
+            }
+            .font(.caption2)
+            .foregroundStyle(Tema.textoSecundario)
+        }
+    }
 }

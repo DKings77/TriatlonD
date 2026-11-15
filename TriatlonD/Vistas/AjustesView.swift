@@ -173,7 +173,7 @@ struct AjustesView: View {
                 } header: {
                     Text("Avisos")
                 } footer: {
-                    Text("La noche antes te avisa de las sesiones del día siguiente. Funciona sin internet.")
+                    Text("La noche antes te avisa de las sesiones del día siguiente, y el primer viernes de cada mes a las 8:15 te recuerda pesarte. Funciona sin internet.")
                 }
 
                 Section {

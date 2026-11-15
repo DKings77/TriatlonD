@@ -99,24 +99,33 @@ enum Analisis {
         return valor / Double(vencidas.count) * 100
     }
 
-    static func constancia(_ hechas: [SesionHecha], hoy: Date) -> Constancia {
+    /// Días seguidos cumpliendo: entrenando o descansando cuando el plan lo dice.
+    /// Antes de que existiera el plan, solo cuentan los días entrenados.
+    static func constancia(_ hechas: [SesionHecha], hoy: Date, plan: [SesionPlan] = []) -> Constancia {
         let calendario = Calendar(identifier: .gregorian)
         let conEntreno = Set(hechas.map(\.dia))
+        let conPlan = Set(plan.map(\.fecha))
+        let inicioPlan = plan.map(\.fecha).min() ?? "9999"
         var dias: [(fecha: Date, entrenado: Bool)] = []
-        for atras in stride(from: 34, through: 0, by: -1) {
+        var cumple: [Bool] = []
+        for atras in stride(from: 59, through: 0, by: -1) {
             guard let fecha = calendario.date(byAdding: .day, value: -atras, to: hoy) else { continue }
-            dias.append((fecha, conEntreno.contains(Calendario.texto(fecha))))
+            let texto = Calendario.texto(fecha)
+            let entrenado = conEntreno.contains(texto)
+            let descansoPlanificado = texto >= inicioPlan && !conPlan.contains(texto)
+            if atras < 35 { dias.append((fecha, entrenado)) }
+            cumple.append(entrenado || descansoPlanificado)
         }
         var mejor = 0
         var seguida = 0
-        for dia in dias {
-            seguida = dia.entrenado ? seguida + 1 : 0
+        for ok in cumple {
+            seguida = ok ? seguida + 1 : 0
             mejor = max(mejor, seguida)
         }
         // La racha actual no se rompe por no haber entrenado todavía hoy.
         var actual = 0
-        for (indice, dia) in dias.reversed().enumerated() {
-            if dia.entrenado { actual += 1 } else if indice > 0 { break }
+        for (indice, ok) in cumple.reversed().enumerated() {
+            if ok { actual += 1 } else if indice > 0 { break }
         }
         return Constancia(dias: dias, rachaActual: actual, mejorRacha: mejor,
                           diasEntrenados: dias.filter { $0.entrenado }.count)
