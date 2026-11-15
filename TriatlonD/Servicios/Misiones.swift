@@ -29,10 +29,11 @@ enum Misiones {
         // Sensaciones del último entreno hecho (hoy o ayer)
         let ayer = Calendario.texto(Date().addingTimeInterval(-86400))
         let recientes = cruce.filter { ($0.sesion.fecha == hoy || $0.sesion.fecha == ayer) && ($0.estado == .hecha || $0.estado == .aMedias) }
-        let apuntadas = !recientes.isEmpty && recientes.allSatisfy { c in
+        // Cuenta la última sesión hecha, que es la que sale en el parte.
+        let apuntadas = recientes.last.map { c in
             let s = Sensaciones.de(dia: c.sesion.fecha, deporte: c.sesion.deporte)
             return s.esfuerzo != nil && s.animo != nil
-        }
+        } ?? false
 
         var lista = [
             Mision(id: "sueno", titulo: "Dormir 7 h", detalle: String(format: "Anoche: %.1f h", horas),
