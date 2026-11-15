@@ -32,18 +32,18 @@ struct TarjetaParte: View {
             if let previstos = parte.minutosPrevistos {
                 FilaComparada(titulo: "Duración", hecho: "\(Int(parte.minutosHechos))'",
                               objetivo: "\(Int(previstos))'",
-                              progreso: min(parte.minutosHechos / previstos, 1.2) / 1.2,
+                              progreso: min(parte.minutosHechos / previstos, 1),
                               bien: parte.minutosHechos >= previstos * 0.8, aparecido: aparecido)
             }
             if let vatios = parte.potenciaMedia, let objetivo = parte.objetivoPotencia {
                 FilaComparada(titulo: "Potencia media", hecho: "\(Int(vatios)) W", objetivo: "\(Int(objetivo)) W",
-                              progreso: min(vatios / objetivo, 1.3) / 1.3,
+                              progreso: min(vatios / objetivo, 1),
                               bien: abs(vatios - objetivo) <= objetivo * 0.08, aparecido: aparecido)
             }
             if let pulso = parte.pulsoMedio, let rango = parte.objetivoPulso {
                 let dentro = Int(pulso) >= rango.desde - 5 && Int(pulso) <= rango.hasta
                 FilaComparada(titulo: "Pulso medio", hecho: "\(Int(pulso)) ppm", objetivo: "\(rango.desde)-\(rango.hasta)",
-                              progreso: min(pulso / Double(rango.hasta), 1.15) / 1.15,
+                              progreso: min(pulso / Double(rango.hasta), 1),
                               bien: dentro, aparecido: aparecido)
             }
             Text(lectura)
