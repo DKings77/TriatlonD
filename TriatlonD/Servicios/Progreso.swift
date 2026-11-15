@@ -128,7 +128,10 @@ enum Partes {
         let limite = Calendario.texto(Date().addingTimeInterval(-3 * 86400))
         let cruce = Analisis.cumplimiento(plan: plan, hechas: hechas, hoy: hoy)
             .filter { ($0.estado == .hecha || $0.estado == .aMedias) && $0.sesion.fecha >= limite }
-        guard let c = cruce.last else { return nil }
+        // El día más reciente con algo hecho; dentro de él, mejor el cardio que la fuerza.
+        guard let ultimoDia = cruce.last?.sesion.fecha else { return nil }
+        let delUltimo = cruce.filter { $0.sesion.fecha == ultimoDia }
+        guard let c = delUltimo.last(where: { $0.sesion.deporte != .fuerza }) ?? delUltimo.last else { return nil }
         let delDia = hechas.filter { $0.dia == c.sesion.fecha && $0.deporte == c.sesion.deporte.rawValue }
         let minutos = delDia.map(\.minutos).reduce(0, +)
         func media(_ valor: KeyPath<SesionHecha, Double?>) -> Double? {

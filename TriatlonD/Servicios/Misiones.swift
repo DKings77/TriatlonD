@@ -26,14 +26,13 @@ enum Misiones {
         let entrenoHecho = !deHoy.isEmpty && deHoy.allSatisfy { $0.estado == .hecha || $0.estado == .aMedias }
         let descanso = deHoy.isEmpty
         let horas = e.sueno.horas ?? 0
-        // Sensaciones del último entreno hecho (hoy o ayer)
-        let ayer = Calendario.texto(Date().addingTimeInterval(-86400))
-        let recientes = cruce.filter { ($0.sesion.fecha == hoy || $0.sesion.fecha == ayer) && ($0.estado == .hecha || $0.estado == .aMedias) }
-        // Cuenta la última sesión hecha, que es la que sale en el parte.
-        let apuntadas = recientes.last.map { c in
+        // Sensaciones del cardio de hoy (bici, carrera o natación). Sin cardio, no hay misión.
+        let cardioHoy = deHoy.filter { $0.sesion.deporte != .fuerza }
+        let cardioHecho = cardioHoy.filter { $0.estado == .hecha || $0.estado == .aMedias }
+        let apuntadas = !cardioHecho.isEmpty && cardioHecho.allSatisfy { c in
             let s = Sensaciones.de(dia: c.sesion.fecha, deporte: c.sesion.deporte)
             return s.esfuerzo != nil && s.animo != nil
-        } ?? false
+        }
 
         var lista = [
             Mision(id: "sueno", titulo: "Dormir 7 h", detalle: String(format: "Anoche: %.1f h", horas),
@@ -44,8 +43,9 @@ enum Misiones {
                 : Mision(id: "entreno", titulo: "Cumplir lo de hoy", detalle: deHoy.map(\.sesion.titulo).joined(separator: " + "),
                          icono: "flag.checkered", puntos: 20, cumplida: entrenoHecho)
         ]
-        if !recientes.isEmpty {
-            lista.append(Mision(id: "sensaciones", titulo: "Apuntar sensaciones", detalle: "Esfuerzo y ánimo en el parte del entreno",
+        if !cardioHoy.isEmpty {
+            lista.append(Mision(id: "sensaciones", titulo: "Apuntar sensaciones",
+                                detalle: cardioHecho.isEmpty ? "Tras el \(cardioHoy.map { $0.sesion.deporte.rawValue.lowercased() }.joined(separator: " y ")), en el parte" : "Esfuerzo y ánimo en el parte del entreno",
                                 icono: "square.and.pencil", puntos: 10, cumplida: apuntadas))
         }
         registrar(lista.filter(\.cumplida).map(\.id), dia: hoy)
