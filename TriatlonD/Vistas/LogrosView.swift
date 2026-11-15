@@ -79,35 +79,54 @@ struct VitrinaLogros: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                    ForEach(Array(logros.enumerated()), id: \.element.id) { i, l in
-                        VStack(spacing: 8) {
-                            Image(systemName: l.conseguido ? l.icono : "lock.fill")
-                                .font(.system(size: 28))
-                                .foregroundStyle(l.conseguido ? Tema.experiencia : Tema.textoSecundario)
-                                .frame(width: 60, height: 60)
-                                .background((l.conseguido ? Tema.experiencia : Tema.pista).opacity(l.conseguido ? 0.15 : 0.6))
-                                .clipShape(Circle())
-                            Text(l.titulo)
-                                .font(.subheadline.bold())
-                                .multilineTextAlignment(.center)
-                            Text(l.detalle)
-                                .font(.caption)
-                                .foregroundStyle(Tema.textoSecundario)
-                                .multilineTextAlignment(.center)
-                            if let fecha = l.fecha {
-                                Text(fecha == "antes" ? "Ya lo tenías" : "Conseguido \(Calendario.etiqueta(fecha))")
-                                    .font(.caption2.bold())
-                                    .foregroundStyle(Tema.carrera)
+                VStack(alignment: .leading, spacing: 18) {
+                    ForEach(Logros.categorias, id: \.self) { categoria in
+                        let grupo = logros.filter { $0.categoria == categoria }
+                        if !grupo.isEmpty {
+                            HStack {
+                                Text(categoria)
+                                    .font(.title3.bold())
+                                Spacer()
+                                Text("\(grupo.filter(\.conseguido).count) de \(grupo.count)")
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(Tema.experiencia)
+                            }
+                            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                                ForEach(Array(grupo.enumerated()), id: \.element.id) { i, l in
+                                    VStack(spacing: 6) {
+                                        Image(systemName: l.conseguido ? l.icono : "lock.fill")
+                                            .font(.system(size: 22))
+                                            .foregroundStyle(l.conseguido ? Tema.experiencia : Tema.textoSecundario)
+                                            .frame(width: 48, height: 48)
+                                            .background((l.conseguido ? Tema.experiencia : Tema.pista).opacity(l.conseguido ? 0.15 : 0.6))
+                                            .clipShape(Circle())
+                                        Text(l.titulo)
+                                            .font(.caption.bold())
+                                            .multilineTextAlignment(.center)
+                                            .lineLimit(2)
+                                            .minimumScaleFactor(0.85)
+                                        if let fecha = l.fecha {
+                                            Text(fecha == "antes" ? "Ya lo tenías" : Calendario.etiqueta(fecha))
+                                                .font(.caption2.bold())
+                                                .foregroundStyle(Tema.carrera)
+                                        } else {
+                                            Text(l.detalle)
+                                                .font(.caption2)
+                                                .foregroundStyle(Tema.textoSecundario)
+                                                .multilineTextAlignment(.center)
+                                                .lineLimit(3)
+                                        }
+                                    }
+                                    .padding(8)
+                                    .frame(maxWidth: .infinity, minHeight: 150, alignment: .top)
+                                    .background(Tema.superficie)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                                    .opacity(visible ? (l.conseguido ? 1 : 0.6) : 0)
+                                    .scaleEffect(visible ? 1 : 0.8)
+                                    .animation(.spring(duration: 0.4).delay(Double(i) * 0.03), value: visible)
+                                }
                             }
                         }
-                        .padding(12)
-                        .frame(maxWidth: .infinity, minHeight: 170)
-                        .background(Tema.superficie)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .opacity(visible ? (l.conseguido ? 1 : 0.6) : 0)
-                        .scaleEffect(visible ? 1 : 0.8)
-                        .animation(.spring(duration: 0.4).delay(Double(i) * 0.03), value: visible)
                     }
                 }
                 .padding(20)
