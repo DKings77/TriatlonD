@@ -70,8 +70,7 @@ final class ClienteClaude {
             "messages": [["role": "user", "content": mensaje]],
             "tools": [["name": "proponer_semana",
                        "description": "Devuelve la semana de entrenos propuesta y su explicación.",
-                       "input_schema": esquema]],
-            "tool_choice": ["type": "tool", "name": "proponer_semana"]
+                       "input_schema": esquema]]
         ]
         peticion.httpBody = try JSONSerialization.data(withJSONObject: cuerpo)
 
@@ -207,7 +206,7 @@ enum ContextoIA {
 
     La duración y los vatios del nombre tienen que coincidir con los pasos.
 
-    RESPUESTA: usa la herramienta proponer_semana. Su contenido sigue este formato:
+    RESPUESTA: responde SIEMPRE llamando a la herramienta proponer_semana, sin escribir texto aparte. Su contenido sigue este formato:
     {"explicacion": "tres o cuatro frases en español, claras y directas: qué has visto en los datos y qué cambia esta semana",
      "sesiones": [{"fecha": "aaaa-mm-dd", "tipo": "Ride|Run|Swim|WeightTraining", "nombre": "...", "pasos": "..."}]}
     No inventes datos que no estén en el contexto.
