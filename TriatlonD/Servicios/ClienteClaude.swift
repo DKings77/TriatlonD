@@ -45,11 +45,33 @@ final class ClienteClaude {
         if !extra.isEmpty {
             mensaje += "\n\nINDICACIONES DE DAVID PARA ESTA SEMANA (mandan sobre lo demás):\n" + extra
         }
+        // La respuesta llega como llamada a una herramienta con esquema fijo: así la API
+        // devuelve el JSON ya validado y no hay que leerlo del texto.
+        let esquemaTexto = """
+        {"type": "object",
+         "properties": {
+           "explicacion": {"type": "string", "description": "Tres a ocho frases en español, claras y directas."},
+           "sesiones": {"type": "array", "items": {"type": "object",
+             "properties": {
+               "fecha": {"type": "string", "description": "aaaa-mm-dd"},
+               "tipo": {"type": "string", "enum": ["Ride", "Run", "Swim", "WeightTraining"]},
+               "nombre": {"type": "string"},
+               "pasos": {"type": "string", "description": "Pasos en formato intervals.icu, una línea por paso"}
+             },
+             "required": ["fecha", "tipo", "nombre", "pasos"]}}
+         },
+         "required": ["explicacion", "sesiones"]}
+        """
+        let esquema = (try? JSONSerialization.jsonObject(with: Data(esquemaTexto.utf8))) ?? [:]
         let cuerpo: [String: Any] = [
             "model": ClienteClaude.modelo,
-            "max_tokens": 4000,
+            "max_tokens": 12000,
             "system": ContextoIA.reglas,
-            "messages": [["role": "user", "content": mensaje]]
+            "messages": [["role": "user", "content": mensaje]],
+            "tools": [["name": "proponer_semana",
+                       "description": "Devuelve la semana de entrenos propuesta y su explicación.",
+                       "input_schema": esquema]],
+            "tool_choice": ["type": "tool", "name": "proponer_semana"]
         ]
         peticion.httpBody = try JSONSerialization.data(withJSONObject: cuerpo)
 
@@ -70,10 +92,20 @@ final class ClienteClaude {
                                 salida: (uso["output_tokens"] as? NSNumber)?.intValue ?? 0))
         }
         let bloques = json["content"] as? [[String: Any]] ?? []
-        let texto = bloques.compactMap { $0["text"] as? String }.joined()
-        guard let inicio = texto.firstIndex(of: "{"), let fin = texto.lastIndex(of: "}"),
-              let objeto = try? JSONSerialization.jsonObject(with: Data(texto[inicio...fin].utf8)) as? [String: Any],
-              let lista = objeto["sesiones"] as? [[String: Any]] else {
+        if (json["stop_reason"] as? String) == "max_tokens" {
+            throw ErrorClaude(mensaje: "La propuesta se ha cortado por larga. Vuelve a pedirla; si se repite, avísame.")
+        }
+        var objeto = bloques.first { ($0["type"] as? String) == "tool_use" }?["input"] as? [String: Any]
+        if objeto == nil {
+            // Por si llegara como texto: se toma el JSON y se arreglan saltos de línea dentro de las cadenas.
+            let texto = bloques.compactMap { $0["text"] as? String }.joined()
+            if let inicio = texto.firstIndex(of: "{"), let fin = texto.lastIndex(of: "}") {
+                let crudo = String(texto[inicio...fin])
+                objeto = (try? JSONSerialization.jsonObject(with: Data(crudo.utf8)) as? [String: Any])
+                    ?? (try? JSONSerialization.jsonObject(with: Data(ClienteClaude.escaparSaltos(crudo).utf8)) as? [String: Any])
+            }
+        }
+        guard let objeto, let lista = objeto["sesiones"] as? [[String: Any]] else {
             throw ErrorClaude(mensaje: "La propuesta no ha llegado en el formato esperado. Vuelve a pedirla.")
         }
 
@@ -96,6 +128,21 @@ final class ClienteClaude {
             throw ErrorClaude(mensaje: "La propuesta ha llegado vacía. Vuelve a pedirla.")
         }
         return PropuestaSemana(explicacion: objeto["explicacion"] as? String ?? "", sesiones: sesiones)
+    }
+
+    /// Cambia los saltos de línea que van dentro de comillas por \\n, para que el JSON sea válido.
+    static func escaparSaltos(_ texto: String) -> String {
+        var resultado = ""
+        var dentro = false
+        var escapado = false
+        for c in texto {
+            if escapado { resultado.append(c); escapado = false; continue }
+            if c == "\\" { resultado.append(c); escapado = true; continue }
+            if c == "\"" { dentro.toggle() }
+            if dentro && c == "\n" { resultado += "\\n"; continue }
+            resultado.append(c)
+        }
+        return resultado
     }
 }
 
@@ -160,7 +207,7 @@ enum ContextoIA {
 
     La duración y los vatios del nombre tienen que coincidir con los pasos.
 
-    RESPUESTA: solo un objeto JSON, sin texto alrededor ni bloques de código:
+    RESPUESTA: usa la herramienta proponer_semana. Su contenido sigue este formato:
     {"explicacion": "tres o cuatro frases en español, claras y directas: qué has visto en los datos y qué cambia esta semana",
      "sesiones": [{"fecha": "aaaa-mm-dd", "tipo": "Ride|Run|Swim|WeightTraining", "nombre": "...", "pasos": "..."}]}
     No inventes datos que no estén en el contexto.
