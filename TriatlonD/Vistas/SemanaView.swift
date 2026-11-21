@@ -18,12 +18,18 @@ struct SemanaView: View {
 
     /// Lo que viene: de hoy en adelante, sin lo de hoy que ya está hecho.
     private var visibles: [SesionPlan] {
-        guard !verPasado else { return plan.ordenadas }
         let hoy = Calendario.texto(Date())
         let hechasHoy = Set(Analisis.cumplimiento(plan: plan.sesiones.filter { $0.fecha == hoy },
                                                   hechas: almacen.historico?.sesiones ?? [], hoy: hoy)
             .filter { $0.estado == .hecha || $0.estado == .aMedias }.map(\.sesion.id))
         return plan.ordenadas.filter { $0.fecha > hoy || ($0.fecha == hoy && !hechasHoy.contains($0.id)) }
+    }
+
+    /// Lo ya pasado (y lo hecho hoy), del más nuevo al más viejo.
+    private var pasadas: [SesionPlan] {
+        let siguientes = Set(visibles.map(\.id))
+        return plan.ordenadas.filter { !siguientes.contains($0.id) }
+            .sorted { ($0.fecha, $0.nombre) > ($1.fecha, $1.nombre) }
     }
     @State private var elegida: SesionPlan?
 
@@ -95,6 +101,28 @@ struct SemanaView: View {
                             FilaSesion(sesion: sesion)
                         }
                         .buttonStyle(.plain)
+                    }
+                }
+
+                if verPasado && !pasadas.isEmpty {
+                    Text("Ya pasado")
+                        .font(.title3.bold())
+                        .padding(.top, 10)
+                    let semanasPasadas = Array(Set(pasadas.compactMap { Calendario.fecha($0.fecha).map(Calendario.semanaTemporada) })).sorted(by: >)
+                    ForEach(semanasPasadas, id: \.self) { semana in
+                        Text("S\(semana)")
+                            .font(.headline)
+                            .foregroundStyle(Tema.textoSecundario)
+                            .padding(.top, 4)
+                        ForEach(pasadas.filter { Calendario.fecha($0.fecha).map(Calendario.semanaTemporada) == semana }) { sesion in
+                            Button {
+                                elegida = sesion
+                            } label: {
+                                FilaSesion(sesion: sesion)
+                                    .opacity(0.75)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
 
