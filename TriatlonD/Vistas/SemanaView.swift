@@ -14,6 +14,17 @@ struct SemanaView: View {
     @State private var nuevaVisible = false
     @State private var entrenadorVisible = false
     @State private var revisionVisible = false
+    @State private var verPasado = false
+
+    /// Lo que viene: de hoy en adelante, sin lo de hoy que ya está hecho.
+    private var visibles: [SesionPlan] {
+        guard !verPasado else { return plan.ordenadas }
+        let hoy = Calendario.texto(Date())
+        let hechasHoy = Set(Analisis.cumplimiento(plan: plan.sesiones.filter { $0.fecha == hoy },
+                                                  hechas: almacen.historico?.sesiones ?? [], hoy: hoy)
+            .filter { $0.estado == .hecha || $0.estado == .aMedias }.map(\.sesion.id))
+        return plan.ordenadas.filter { $0.fecha > hoy || ($0.fecha == hoy && !hechasHoy.contains($0.id)) }
+    }
     @State private var elegida: SesionPlan?
 
     var body: some View {
@@ -63,9 +74,19 @@ struct SemanaView: View {
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Tema.experiencia.opacity(0.5), lineWidth: 1))
                 }
 
-                ForEach(Totales.porSemana(plan.sesiones), id: \.semana) { total in
+                Toggle("Ver también lo ya pasado", isOn: $verPasado.animation())
+                    .font(.subheadline)
+                    .tint(Tema.turquesa)
+
+                let semanasVisibles = Set(visibles.compactMap { Calendario.fecha($0.fecha).map(Calendario.semanaTemporada) })
+                if semanasVisibles.isEmpty {
+                    Text("No queda nada planificado. Pide la semana siguiente con \"Proponer semana\".")
+                        .font(.subheadline)
+                        .foregroundStyle(Tema.textoSecundario)
+                }
+                ForEach(Totales.porSemana(plan.sesiones).filter { semanasVisibles.contains($0.semana) }, id: \.semana) { total in
                     CabeceraSemana(total: total, media: media)
-                    ForEach(plan.ordenadas.filter { sesion in
+                    ForEach(visibles.filter { sesion in
                         Calendario.fecha(sesion.fecha).map(Calendario.semanaTemporada) == total.semana
                     }) { sesion in
                         Button {
